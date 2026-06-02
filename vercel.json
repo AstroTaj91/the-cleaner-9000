@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/dispatch-check",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/review-check",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

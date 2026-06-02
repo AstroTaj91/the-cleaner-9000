@@ -1,0 +1,23 @@
+[
+  {
+    "job_id": "job_1779822321862",
+    "customer_name": "Sarah Jenkins",
+    "customer_phone": "+19055550123",
+    "city": "Oakville",
+    "region": "west",
+    "beds": 4,
+    "baths": 2,
+    "is_deep_clean": false,
+    "retail_price": 310,
+    "wholesale_price": 195,
+    "appointment_time": "2026-05-27T09:00",
+    "address": "1248 Lakeshore Rd",
+    "status": "CONFIRMED",
+    "attempts": 1,
+    "assigned_contractor_id": "cleaner_mock_rul5qenu",
+    "assigned_contractor_name": "Alice Green",
+    "assigned_contractor_phone": "+19055550191",
+    "created_at": "2026-05-26T19:05:21.862Z",
+    "updated_at": "2026-05-26T19:05:28.840Z"
+  }
+]

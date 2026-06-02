@@ -1,0 +1,221 @@
+--- Page 1 ---
+The Velch Automator: Google Antigravity
+Build Guide (v2.0)
+Author: Taj Sarin, AI Ninja From: Sarin-Intelligence Classification: For Internal Use Only
+Updated: May 26, 2026 — Revised to incorporate all 5 custom proprietary skills
+What Changed in v2.0
+The original build guide listed generic skills from skills.sh and provided basic Antigravity
+prompts. This version is materially upgraded in three ways:
+1. Section 3 (Skills Installation) now includes all 5 custom-built proprietary skills —
+velch-gbp-ranking, velch-competitor-radar, velch-review-blitz, velch-
+instant-quote, and velch-dispatch-engine — which encode Eric Velch’s exact
+strategies directly into the agent’s context. The original guide had no custom skills.
+2. Section 4 (Prompt Sequence) has been updated. Each prompt now explicitly
+references the relevant custom skill by name, instructing Antigravity to follow the
+skill’s rules rather than making architectural decisions on its own. This eliminates
+ambiguity and prevents the agent from inventing its own pricing logic, dispatch rules,
+or review copy.
+3. Section 5 (UI/UX) has been updated to reflect the Mission Control split-panel layout,
+the Review Gap tracker, and the regional segmentation display — all defined in the
+custom skills.
+1. Executive Summary
+This document provides the exact Google Antigravity build plan to create a one-click web
+application that automates Eric Velch’s GTA house cleaning playbook. The application,
+named Velch Automator, features a dashboard to sync Google Business Profiles (GBPs),
+analyze local competitors via the Google Places API, auto-generate SEO copy using GPT-
+
+--- Page 2 ---
+4o, manage automated review blitzes, and route incoming calls to a human operator with
+an instant quoting interface. All business logic is encoded in proprietary custom skills that
+the Antigravity agent loads automatically.
+2. Application Architecture (The Velch Automator)
+The application is built using the agent-first paradigm in Google Antigravity, utilizing Next.js
+14 App Router (frontend), Node.js API Routes (backend), and Supabase (database).
+Core Modules
+Module Custom Skill Purpose
+Mission Control
+Dashboard
+velch-instant-
+quote
+Human operator call interface, pricing calculator,
+booking form
+GBP Sync & SEO
+Engine velch-gbp-ranking Google My Business API sync + GPT-4o weekly
+SEO post generator
+Competitor Radar velch-competitor-
+radar
+Google Places API review threshold check —
+GO/NO-GO per suburb
+Review Blitz
+Manager
+velch-review-
+blitz
+Post-job SMS review requests with keyword
+coaching + gap tracker
+Dispatch Engine velch-dispatch-
+engine
+Automated SMS broadcast to cleaners with GTA
+regional segmentation
+3. Required Skills Installation
+Install all skills before starting any Antigravity session. The agent will automatically load the
+relevant skill for each module.
+Step 1 — Install from skills.sh (Community Skills)
+Run from your project root:
+
+--- Page 3 ---
+# Database & Backend
+npx skills add supabase/agent-skills/supabase-postgres-best-practices
+npx skills add supabase/agent-skills/supabase
+# Frontend Framework
+npx skills add vercel-labs/agent-skills/vercel-react-best-practices
+npx skills add vercel-labs/next-skills/next-best-practices
+# AI & Automation
+npx skills add vercel/ai/ai-sdk
+npx skills add obra/superpowers/subagent-driven-development
+# Twilio (Official Publisher)
+npx skills add twilio/ai
+npx skills add sickn33/antigravity-awesome-skills
+# Marketing & SEO
+npx skills add coreyhaines31/marketingskills/seo-audit
+npx skills add coreyhaines31/marketingskills/copywriting
+Step 2 — Install Custom Proprietary Skills (Velch Strategy Skills)
+These skills do not exist on skills.sh. Copy them from your local skills library into the
+project’s .skills/ folder:
+cp -r ~/.skills/velch-gbp-ranking .skills/
+cp -r ~/.skills/velch-competitor-radar .skills/
+cp -r ~/.skills/velch-review-blitz .skills/
+cp -r ~/.skills/velch-instant-quote .skills/
+cp -r ~/.skills/velch-dispatch-engine .skills/
+Why this matters: Without these custom skills, Antigravity will invent its own pricing logic,
+dispatch rules, and review copy — none of which will match Velch’s proven system. The
+custom skills lock in the exact mechanisms that are documented to work.
+
+--- Page 4 ---
+4. The Antigravity Prompt Sequence
+Execute these prompts sequentially. Always review and approve the agent’s Artifact (plan)
+before allowing it to write code. Each prompt now explicitly references the relevant custom
+skill.
+Phase 1: Project Scaffolding & Database Schema
+Prompt 1: Setup & Database
+“Scaffold a new Next.js 14 App Router project with a Node.js backend and Supabase
+integration. Design and implement the database schema for the ‘Velch Automator’.
+Tables required: GBP_Listings (our Google profiles, including city, review_count,
+google_review_link), Competitors (top 3 Maps results per city, review counts), Jobs
+(bookings with status enum: pending/assigned/completed), Contractors (cleaner
+network with gta_region field using values: west/north/east/central), and Customers.
+Apply Supabase RLS best practices from the supabase-postgres-best-practices skill.
+Create an implementation plan Artifact before writing SQL migrations.”
+Phase 2: Competitor Radar & GBP Sync
+Prompt 2: The Threshold Tool (Competitor Radar)
+“Build the ‘Competitor Radar’ module following the velch-competitor-radar skill.
+Create a backend service that takes a GTA suburb and service keyword (e.g., ‘Oakville
+house cleaning’) and calls the Google Places API Text Search to fetch the top 3 ranking
+businesses. Apply the Velch Threshold: flag as GO (green) if at least 2 of the top 3 have
+fewer than 100 reviews, NO-GO (red) if not. Build a React component with a traffic light
+visual. Generate an Artifact of the API integration plan before coding.”
+Prompt 3: GBP Sync & AI Copywriter
+“Build the GBP Sync & SEO Engine following the velch-gbp-ranking skill. Integrate
+the Google My Business API to sync active GBP listings into the GBP_Listings table.
+Build an AI Copywriter using the Vercel AI SDK and GPT-4o. The weekly post
+generation function MUST use this exact prompt constraint from the skill: ‘Write a
+Google Business Profile update for a house cleaning company in [City]. Naturally
+
+--- Page 5 ---
+include the phrase [City] house cleaning 2-3 times. Keep it under 750 characters.’ Add a
+‘Sync GBPs’ button and a ‘Generate & Post Weekly SEO Update’ button that fires for all
+active listings simultaneously.”
+Phase 3: The Review Blitz Manager
+Prompt 4: Review Automation
+“Build the Review Blitz Manager following the velch-review-blitz skill. Integrate
+Twilio SMS. Create a Supabase database webhook that fires when jobs.status
+changes to ‘completed’. The webhook must wait 30 minutes then send the exact SMS
+template from the skill — including the keyword coaching instruction asking the
+customer to mention ‘[City] house cleaning’ in their review. Build the Review Gap tracker
+UI component showing our review count vs. the top competitor’s count per GBP listing.”
+Phase 4: Mission Control & Dispatch (Human-in-the-Loop)
+Prompt 5: Mission Control Interface
+“Build the Mission Control screen following the velch-instant-quote skill. Integrate
+Twilio Voice to route inbound calls to a web softphone in the dashboard. Implement the
+exact split-panel layout from the skill: left panel is the softphone + scrollable call script,
+right panel is the Instant Quote Calculator. The calculator must implement the exact
+pricing matrix from the skill: 1 Bed/1 Bath = 85 wholesale, 2 Bed/1 Bath =
+115 wholesale, 3 Bed/2 Bath = 155 wholesale, 4 Bed/2 Bath =
+195 wholesale, Deep Clean add-on = + 35 wholesale. Display
+both retail and wholesale prices side by side. Include the ‘Book Job’ form with a GTA
+region selector.”
+Prompt 6: Automated Dispatch Engine
+“Build the Dispatch Engine following the velch-dispatch-engine skill. When the
+operator clicks ‘Confirm Booking’, trigger a backend Dispatch Agent that broadcasts the
+exact SMS template from the skill to all active cleaners in the matching GTA region from
+the Contractors table. Implement the full state machine from the skill:
+BOOKING_CONFIRMED → DISPATCH_BROADCAST → AWAITING_RESPONSE →
+ASSIGNED → CONFIRMED, with a 15-minute timeout and 2 rebroadcast attempts
+before alerting the operator. Send confirmation SMS to both the assigned cleaner and
+140retail/
+190retail/ 250retail/
+310retail/ 70retail/+
+
+--- Page 6 ---
+the customer using the templates defined in the skill. Create an Artifact mapping this
+state machine before implementation.”
+5. UI/UX Design (Screen-by-Screen)
+Screen Key Components Skill Reference
+Dashboard
+Home
+Total Jobs, Revenue, Active GBPs, Pending
+Dispatches, Review Gap summary All skills
+Market Intel City + keyword search bar, GO/NO-GO traffic
+light, review count breakdown for top 3 velch-competitor-radar
+GBP Manager List of synced profiles, review count per listing,
+“Generate & Post Weekly SEO Update” button velch-gbp-ranking
+Mission
+Control
+Split panel: softphone + call script (left), quote
+calculator + booking form (right) velch-instant-quote
+Dispatch &
+Reviews
+Live SMS dispatch feed, cleaner assignment
+status, review request tracker, Review Gap per
+city
+velch-dispatch-engine,
+velch-review-blitz
+
+--- Page 7 ---
+6. Technology Feasibility Summary
+Technology Feasibility Notes
+Google Places API A (90) Mature API, direct support for review count extraction
+Google My Business
+API B+ (80) Requires OAuth approval — apply early, can take 1–2
+weeks
+Twilio Voice/SMS A (95) Industry standard, official skills.sh publisher with 50+
+skills
+OpenAI GPT-4o A (95) Vercel AI SDK abstracts all complexity
+Supabase Webhooks A (90) Native support for database event triggers
+Overall A (90⁄100) All components have mature APIs and official
+documentation
+7. Custom Skills Reference Summary
+Skill Name Encodes Critical Rule
+velch-gbp-ranking GBP naming strategy + SEO copy
+constraints
+Exact-match business name is
+non-negotiable
+velch-competitor-
+radar Velch Threshold logic GO = 2+ of top 3 have <100
+reviews
+velch-review-
+blitz
+Review SMS template + 30-min delay
++ keyword coaching
+Never send immediately after
+job completion
+velch-instant-
+quote
+Full pricing matrix + call script + split-
+panel UI
+Always show retail AND
+wholesale side by side
+velch-dispatch-
+engine
+State machine + GTA regions +
+timeout fallback Never dispatch cross-region
+

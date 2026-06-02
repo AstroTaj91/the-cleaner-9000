@@ -1,101 +1,1908 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import React, { useState, useEffect } from 'react';
+import { 
+  LayoutDashboard, 
+  Radar, 
+  Store, 
+  RefreshCw, 
+  Sparkles, 
+  ExternalLink, 
+  TrendingUp, 
+  DollarSign, 
+  Users, 
+  CheckCircle2, 
+  XCircle,
+  AlertTriangle,
+  MapPin,
+  Check,
+  Search,
+  MessageSquare,
+  Clock,
+  Send,
+  Phone,
+  PhoneCall,
+  PhoneOff,
+  Volume2,
+  VolumeX,
+  Plus,
+  Trash2,
+  BookOpen
+} from 'lucide-react';
+
+interface Competitor {
+  name: string;
+  reviewCount: number;
+  rating: number;
+  rank: number;
+}
+
+interface CompetitorRadarResponse {
+  suburb: string;
+  keyword: string;
+  status: 'GO' | 'NO-GO';
+  weakCount: number;
+  competitors: Competitor[];
+}
+
+interface GbpListing {
+  id?: string;
+  name: string;
+  city: string;
+  review_count: number;
+  google_review_link: string;
+  created_at?: string;
+}
+
+interface GbpPostResponse {
+  success: boolean;
+  usedAI: boolean;
+  city: string;
+  charCount: number;
+  keywordOccurrences: number;
+  postContent: string;
+}
+
+interface ReviewRequest {
+  id: string;
+  job_id: string;
+  customer_name: string;
+  customer_phone: string;
+  city: string;
+  status: string;
+  sms_sent_at: string | null;
+  sms_body: string;
+}
+
+interface DispatchRun {
+  job_id: string;
+  customer_name: string;
+  customer_phone: string;
+  city: string;
+  region: 'west' | 'north' | 'east' | 'central';
+  beds: number;
+  baths: number;
+  is_deep_clean: boolean;
+  retail_price: number;
+  wholesale_price: number;
+  appointment_time: string;
+  address: string;
+  status: 'BOOKING_CONFIRMED' | 'DISPATCH_BROADCAST' | 'AWAITING_RESPONSE' | 'ASSIGNED' | 'CONFIRMED' | 'ALERT_OPERATOR';
+  attempts: number;
+  assigned_contractor_id: string | null;
+  assigned_contractor_name: string | null;
+  assigned_contractor_phone: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const calculateFrontendPrices = (beds: number, baths: number, isDeepClean: boolean) => {
+  let retail = 140;
+  let wholesale = 85;
+
+  if (beds === 1 && baths === 1) {
+    retail = 140;
+    wholesale = 85;
+  } else if (beds === 2 && baths === 1) {
+    retail = 190;
+    wholesale = 115;
+  } else if (beds === 3 && baths === 2) {
+    retail = 250;
+    wholesale = 155;
+  } else if (beds === 4 && baths === 2) {
+    retail = 310;
+    wholesale = 195;
+  } else {
+    const additionalBeds = Math.max(0, beds - 1);
+    const additionalBaths = Math.max(0, baths - 1);
+    retail = 140 + (additionalBeds * 50) + (additionalBaths * 60);
+    wholesale = 85 + (additionalBeds * 30) + (additionalBaths * 40);
+  }
+
+  if (isDeepClean) {
+    retail += 70;
+    wholesale += 35;
+  }
+
+  return { retail, wholesale, profit: retail - wholesale };
+};
+
+export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState<'home' | 'radar' | 'gbp' | 'reviews' | 'mission' | 'guide'>('home');
+
+  // Mission Control - Softphone States
+  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'ringing' | 'in-call'>('idle');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [callDuration, setCallDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [activeCallName, setActiveCallName] = useState('');
+
+  // Mission Control - Calculator States
+  const [calcBeds, setCalcBeds] = useState(1);
+  const [calcBaths, setCalcBaths] = useState(1);
+  const [calcIsDeep, setCalcIsDeep] = useState(false);
+
+  // Mission Control - Booking Form States
+  const [bookingName, setBookingName] = useState('');
+  const [bookingPhone, setBookingPhone] = useState('');
+  const [bookingAddress, setBookingAddress] = useState('');
+  const [bookingCity, setBookingCity] = useState('Oakville');
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingFrequency, setBookingFrequency] = useState<'one-off' | 'weekly' | 'bi-weekly' | 'monthly'>('one-off');
+  
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState('');
+  const [bookingError, setBookingError] = useState('');
+
+  // Active Cleaner Dispatches States
+  const [dispatchesList, setDispatchesList] = useState<DispatchRun[]>([]);
+  const [dispatchesLoading, setDispatchesLoading] = useState(false);
+  
+  // Competitor Radar States
+  const [radarCity, setRadarCity] = useState('Oakville');
+  const [radarKeyword, setRadarKeyword] = useState('house cleaning');
+  const [radarResult, setRadarResult] = useState<CompetitorRadarResponse | null>(null);
+  const [radarLoading, setRadarLoading] = useState(false);
+  const [radarError, setRadarError] = useState('');
+
+  // GBP States
+  const [gbpListings, setGbpListings] = useState<GbpListing[]>([]);
+  const [gbpSyncing, setGbpSyncing] = useState(false);
+  const [activeGbpPosts, setActiveGbpPosts] = useState<Record<string, GbpPostResponse>>({});
+  const [gbpPostingIds, setGbpPostingIds] = useState<Record<string, boolean>>({});
+
+  // Review Blitz States
+  const [reviewLogs, setReviewLogs] = useState<ReviewRequest[]>([]);
+  const [reviewLogsLoading, setReviewLogsLoading] = useState(false);
+  const [triggeringJobIds, setTriggeringJobIds] = useState<Record<string, 'pending' | 'sent' | 'failed' | ''>>({});
+
+  // Stats (derived/mocked for display)
+  const totalJobs = 148;
+  const activeCleaners = 32;
+  const totalRevenue = 32400;
+
+  // Mock completed jobs for UI review dispatch triggers
+  const completedJobs = [
+    { id: 'job_oak_101', customer: 'Sarah Jenkins', phone: '+19055550123', city: 'Oakville', service: '3 Bed/2 Bath Cleaning' },
+    { id: 'job_mis_102', customer: 'John Doe', phone: '+14165550456', city: 'Mississauga', service: '1 Bed/1 Bath Cleaning' },
+    { id: 'job_bra_103', customer: 'Rajesh Patel', phone: '+12895550789', city: 'Brampton', service: '2 Bed/1 Bath Deep Clean' },
+    { id: 'job_vau_104', customer: 'Emily Chen', phone: '+19055550111', city: 'Vaughan', service: '4 Bed/2 Bath Cleaning' }
+  ];
+
+  // On page load, fetch synced GBP listings, review logs, and active dispatches
+  useEffect(() => {
+    fetchGbpListings();
+    fetchReviewLogs();
+    fetchDispatches();
+  }, []);
+
+  // Call duration timer hook
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (phoneStatus === 'in-call') {
+      timer = setInterval(() => {
+        setCallDuration((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setCallDuration(0);
+    }
+    return () => clearInterval(timer);
+  }, [phoneStatus]);
+
+  const fetchDispatches = async () => {
+    setDispatchesLoading(true);
+    try {
+      const res = await fetch('/api/dispatch/status');
+      if (res.ok) {
+        const data = await res.json();
+        setDispatchesList(data.dispatches || []);
+      }
+    } catch (err) {
+      console.error('Error fetching active dispatches:', err);
+    } finally {
+      setDispatchesLoading(false);
+    }
+  };
+
+  const handleSimulateTimeout = async (jobId: string) => {
+    try {
+      const res = await fetch('/api/dispatch/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'simulate_timeout', job_id: jobId })
+      });
+      if (res.ok) {
+        fetchDispatches();
+        fetchReviewLogs();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to simulate timeout.');
+      }
+    } catch (err) {
+      console.error('Timeout simulation error:', err);
+    }
+  };
+
+  const handleSimulateClaim = async (jobId: string, cleanerName: string, cleanerPhone: string) => {
+    try {
+      const res = await fetch('/api/dispatch/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'simulate_claim',
+          job_id: jobId,
+          cleaner_name: cleanerName,
+          cleaner_phone: cleanerPhone
+        })
+      });
+      if (res.ok) {
+        fetchDispatches();
+        fetchReviewLogs();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to simulate claim.');
+      }
+    } catch (err) {
+      console.error('Claim simulation error:', err);
+    }
+  };
+
+  const handleResetDispatches = async () => {
+    if (!confirm('Are you sure you want to clear all active dispatch machine records?')) return;
+    try {
+      const res = await fetch('/api/dispatch/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset' })
+      });
+      if (res.ok) {
+        fetchDispatches();
+      }
+    } catch (err) {
+      console.error('Reset dispatches error:', err);
+    }
+  };
+
+  const handleBookJobSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingName || !bookingPhone || !bookingAddress || !bookingDate) {
+      setBookingError('Please fill out all booking fields.');
+      return;
+    }
+
+    setBookingLoading(true);
+    setBookingError('');
+    setBookingSuccess('');
+
+    try {
+      const res = await fetch('/api/jobs/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_name: bookingName,
+          customer_phone: bookingPhone,
+          city: bookingCity,
+          beds: calcBeds,
+          baths: calcBaths,
+          is_deep_clean: calcIsDeep,
+          appointment_time: bookingDate,
+          address: bookingAddress,
+          recurring_frequency: bookingFrequency
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && !data.error) {
+        setBookingSuccess(`Job successfully booked! ID: ${data.job_id}. Dispatch broadcast triggered.`);
+        // Reset form
+        setBookingName('');
+        setBookingPhone('');
+        setBookingAddress('');
+        // Sync lists
+        fetchDispatches();
+        // Shift active tab to reviews tab to observe FSM
+        setTimeout(() => {
+          setActiveTab('reviews');
+        }, 1500);
+      } else {
+        setBookingError(data.error || 'Failed to book job.');
+      }
+    } catch (err) {
+      console.error('Booking submission error:', err);
+      setBookingError('Network error. Check your backend status.');
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  const triggerInboundCallSimulation = (name: string, phone: string, address: string, city: string, beds: number, baths: number, isDeep: boolean) => {
+    setPhoneStatus('ringing');
+    setPhoneNumber(phone);
+    setActiveCallName(name);
+
+    setCalcBeds(beds);
+    setCalcBaths(baths);
+    setCalcIsDeep(isDeep);
+
+    setBookingName(name);
+    setBookingPhone(phone);
+    setBookingAddress(address);
+    setBookingCity(city);
+
+    // Set appointment date/time to tomorrow at 9:00 AM
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    const offset = tomorrow.getTimezoneOffset();
+    const localTomorrow = new Date(tomorrow.getTime() - (offset * 60 * 1000));
+    setBookingDate(localTomorrow.toISOString().slice(0, 16));
+  };
+
+  const fetchGbpListings = async (showSyncIndicator = false) => {
+    if (showSyncIndicator) setGbpSyncing(true);
+    try {
+      const res = await fetch('/api/gbp-sync', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setGbpListings(data.listings || []);
+      }
+    } catch (err) {
+      console.error('Error fetching GBP listings:', err);
+    } finally {
+      if (showSyncIndicator) setGbpSyncing(false);
+    }
+  };
+
+  const fetchReviewLogs = async () => {
+    setReviewLogsLoading(true);
+    try {
+      const res = await fetch('/api/reviews/status');
+      if (res.ok) {
+        const data = await res.json();
+        setReviewLogs(data.requests || []);
+      }
+    } catch (err) {
+      console.error('Error fetching review logs:', err);
+    } finally {
+      setReviewLogsLoading(false);
+    }
+  };
+
+  const handleTriggerReview = async (jobId: string, immediate: boolean) => {
+    setTriggeringJobIds(prev => ({ ...prev, [jobId]: 'pending' }));
+    try {
+      const res = await fetch('/api/webhooks/job-completed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: jobId, immediate })
+      });
+      const data = await res.json();
+      if (res.ok && !data.error) {
+        if (data.skipped) {
+          setTriggeringJobIds(prev => ({ ...prev, [jobId]: 'failed' }));
+          alert(data.reason || 'Skipped to prevent spamming.');
+        } else {
+          setTriggeringJobIds(prev => ({ ...prev, [jobId]: 'sent' }));
+          fetchReviewLogs();
+        }
+      } else {
+        setTriggeringJobIds(prev => ({ ...prev, [jobId]: 'failed' }));
+        alert(data.error || 'Failed to trigger review blitz.');
+      }
+    } catch (err) {
+      console.error('Error triggering review blitz:', err);
+      setTriggeringJobIds(prev => ({ ...prev, [jobId]: 'failed' }));
+    }
+  };
+
+  const handleRunRadar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRadarLoading(true);
+    setRadarError('');
+    setRadarResult(null);
+
+    try {
+      const res = await fetch('/api/competitor-radar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ suburb: radarCity, keyword: radarKeyword })
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to run competitor radar scan.');
+      }
+
+      const data = await res.json();
+      setRadarResult(data);
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'An error occurred.';
+      setRadarError(errMsg);
+    } finally {
+      setRadarLoading(false);
+    }
+  };
+
+  const handleGenerateWeeklyPost = async (listing: GbpListing) => {
+    const listingKey = listing.city;
+    setGbpPostingIds(prev => ({ ...prev, [listingKey]: true }));
+    try {
+      const res = await fetch('/api/gbp-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city: listing.city, gbp_listing_id: listing.id })
+      });
+
+      if (!res.ok) throw new Error('Failed to generate GBP post.');
+
+      const data = await res.json();
+      setActiveGbpPosts(prev => ({ ...prev, [listingKey]: data }));
+    } catch (err) {
+      console.error('Error generating post:', err);
+      alert('Failed to generate SEO post. Check your server logs.');
+    } finally {
+      setGbpPostingIds(prev => ({ ...prev, [listingKey]: false }));
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="flex h-screen bg-neutral-950 text-neutral-100 font-sans overflow-hidden">
+      
+      {/* SIDEBAR NAVIGATION */}
+      <aside className="w-64 bg-neutral-900 border-r border-neutral-800 flex flex-col justify-between">
+        <div>
+          <div className="p-6 border-b border-neutral-800 flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-lg text-white shadow-md shadow-indigo-600/30">
+              C
+            </div>
+            <div>
+              <h1 className="font-bold text-base tracking-wide">THE CLEANER 9,000</h1>
+              <p className="text-xs text-neutral-400 font-medium">AUTOMATOR v2.0</p>
+            </div>
+          </div>
+          
+          <nav className="p-4 space-y-1.5">
+            <button 
+              onClick={() => setActiveTab('home')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeTab === 'home' 
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                  : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
+              }`}
+            >
+              <LayoutDashboard size={18} />
+              <span>Dashboard Home</span>
+            </button>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <button 
+              onClick={() => setActiveTab('radar')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeTab === 'radar' 
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                  : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
+              }`}
+            >
+              <Radar size={18} />
+              <span>Market Intel (Radar)</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('gbp')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeTab === 'gbp' 
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                  : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
+              }`}
+            >
+              <Store size={18} />
+              <span>GBP Manager</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('mission')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeTab === 'mission' 
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                  : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
+              }`}
+            >
+              <PhoneCall size={18} />
+              <span>Mission Control</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('reviews')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeTab === 'reviews' 
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                  : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
+              }`}
+            >
+              <MessageSquare size={18} />
+              <span>Dispatch & Reviews</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('guide')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeTab === 'guide' 
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                  : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
+              }`}
+            >
+              <BookOpen size={18} />
+              <span>How-To Guide</span>
+            </button>
+          </nav>
+        </div>
+
+        <div className="p-4 border-t border-neutral-800">
+          <div className="bg-neutral-950/60 rounded-xl p-3 border border-neutral-800/80">
+            <div className="flex items-center space-x-2 text-xs text-emerald-400 font-semibold mb-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Operator Connected</span>
+            </div>
+            <p className="text-[10px] text-neutral-400">Twilio softphone ready for inbound cleaning requests.</p>
+          </div>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 flex flex-col overflow-y-auto">
+        <header className="h-16 border-b border-neutral-800 bg-neutral-900/40 backdrop-blur-md flex items-center justify-between px-8">
+          <h2 className="text-lg font-semibold tracking-tight capitalize">
+            {activeTab === 'home' && "Operational Overview"}
+            {activeTab === 'radar' && "Competitor Radar"}
+            {activeTab === 'gbp' && "Google Business Profile Sync"}
+            {activeTab === 'reviews' && "Review Blitz & SMS Logs"}
+            {activeTab === 'mission' && "Mission Control (Call Console)"}
+            {activeTab === 'guide' && "How-To Guide & Operational Flow"}
+          </h2>
+          <div className="flex items-center space-x-4">
+            <span className="text-xs px-2.5 py-1 bg-neutral-800 rounded-full text-neutral-300 font-medium border border-neutral-700">
+              GTA Region
+            </span>
+          </div>
+        </header>
+
+        <div className="p-8 max-w-6xl w-full mx-auto space-y-8">
+          
+          {/* ==================== TAB: HOME ==================== */}
+          {activeTab === 'home' && (
+            <div className="space-y-8">
+              {/* STAT CARDS */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl flex items-center justify-between hover:border-neutral-700 transition-all">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1">Total Active Jobs</p>
+                    <h3 className="text-2xl font-bold">{totalJobs}</h3>
+                  </div>
+                  <div className="p-3.5 bg-indigo-500/10 rounded-xl text-indigo-400">
+                    <TrendingUp size={22} />
+                  </div>
+                </div>
+
+                <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl flex items-center justify-between hover:border-neutral-700 transition-all">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1">Estimated Revenue</p>
+                    <h3 className="text-2xl font-bold">${totalRevenue.toLocaleString()}</h3>
+                  </div>
+                  <div className="p-3.5 bg-emerald-500/10 rounded-xl text-emerald-400">
+                    <DollarSign size={22} />
+                  </div>
+                </div>
+
+                <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl flex items-center justify-between hover:border-neutral-700 transition-all">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1">Active Cleaners</p>
+                    <h3 className="text-2xl font-bold">{activeCleaners}</h3>
+                  </div>
+                  <div className="p-3.5 bg-blue-500/10 rounded-xl text-blue-400">
+                    <Users size={22} />
+                  </div>
+                </div>
+              </div>
+
+              {/* REVIEW GAP STATUS */}
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
+                <div className="p-6 border-b border-neutral-800 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-base text-neutral-100">Review Gap Monitor</h3>
+                    <p className="text-xs text-neutral-400 mt-0.5">Comparing synced GBP counts against top competitor benchmarks.</p>
+                  </div>
+                  <button 
+                    onClick={() => fetchGbpListings(true)} 
+                    disabled={gbpSyncing}
+                    className="flex items-center space-x-2 px-3 py-1.5 bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50 text-xs font-medium rounded-lg text-neutral-200 transition-all"
+                  >
+                    <RefreshCw size={14} className={gbpSyncing ? 'animate-spin' : ''} />
+                    <span>Sync Metrics</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  {gbpListings.length === 0 ? (
+                    <div className="p-12 text-center">
+                      <Store className="mx-auto text-neutral-600 mb-3" size={32} />
+                      <p className="text-sm text-neutral-400 mb-4">No listings synced yet.</p>
+                      <button 
+                        onClick={() => fetchGbpListings(true)} 
+                        className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-500 transition-all"
+                      >
+                        Sync Profiles
+                      </button>
+                    </div>
+                  ) : (
+                    <table className="w-full text-left text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-neutral-950/40 text-neutral-400 border-b border-neutral-800 text-xs uppercase font-semibold">
+                          <th className="px-6 py-4">City</th>
+                          <th className="px-6 py-4">Our Profile Name</th>
+                          <th className="px-6 py-4 text-center">Our Reviews</th>
+                          <th className="px-6 py-4 text-center">Benchmark (Top 3 Max)</th>
+                          <th className="px-6 py-4 text-center">Review Gap</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-850">
+                        {gbpListings.map((listing) => {
+                          // Simple benchmark calculations for mockup purposes
+                          const benchmarks: Record<string, number> = {
+                            Mississauga: 220,
+                            Oakville: 310,
+                            Brampton: 68,
+                            Vaughan: 110,
+                            Scarborough: 120
+                          };
+                          const maxCompetitorReviews = benchmarks[listing.city] || 150;
+                          const gap = maxCompetitorReviews - listing.review_count;
+
+                          return (
+                            <tr key={listing.city} className="hover:bg-neutral-900/40 transition-colors">
+                              <td className="px-6 py-4 font-semibold text-neutral-200 flex items-center space-x-2">
+                                <MapPin size={14} className="text-neutral-500" />
+                                <span>{listing.city}</span>
+                              </td>
+                              <td className="px-6 py-4 text-neutral-300 text-xs font-mono">{listing.name}</td>
+                              <td className="px-6 py-4 text-center font-bold text-indigo-400">{listing.review_count}</td>
+                              <td className="px-6 py-4 text-center text-neutral-400">{maxCompetitorReviews}</td>
+                              <td className="px-6 py-4 text-center">
+                                {gap <= 0 ? (
+                                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    <Check size={12} />
+                                    <span>Leader ({Math.abs(gap)})</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                                    <span>-{gap} reviews</span>
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ==================== TAB: RADAR ==================== */}
+          {activeTab === 'radar' && (
+            <div className="space-y-8">
+              {/* RADAR CONTROL PANEL */}
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <form onSubmit={handleRunRadar} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">GTA Suburb / City</label>
+                    <div className="relative">
+                      <MapPin size={16} className="absolute left-3.5 top-3.5 text-neutral-500" />
+                      <input 
+                        type="text" 
+                        value={radarCity}
+                        onChange={(e) => setRadarCity(e.target.value)}
+                        placeholder="e.g. Oakville"
+                        className="w-full bg-neutral-950 border border-neutral-850 focus:border-indigo-500 focus:outline-none rounded-xl py-2.5 pl-10 pr-4 text-sm transition-all"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">Service Keyword</label>
+                    <div className="relative">
+                      <Search size={16} className="absolute left-3.5 top-3.5 text-neutral-500" />
+                      <input 
+                        type="text" 
+                        value={radarKeyword}
+                        onChange={(e) => setRadarKeyword(e.target.value)}
+                        placeholder="e.g. house cleaning"
+                        className="w-full bg-neutral-950 border border-neutral-850 focus:border-indigo-500 focus:outline-none rounded-xl py-2.5 pl-10 pr-4 text-sm transition-all"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={radarLoading}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl py-3 text-sm flex items-center justify-center space-x-2 transition-all duration-200 shadow-lg shadow-indigo-600/25 disabled:opacity-50"
+                  >
+                    {radarLoading ? (
+                      <>
+                        <RefreshCw size={16} className="animate-spin" />
+                        <span>Analyzing Maps...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Radar size={16} />
+                        <span>Analyze Competitors</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+
+              {/* RADAR ERROR */}
+              {radarError && (
+                <div className="bg-rose-500/10 border border-rose-500/25 text-rose-400 p-4 rounded-xl flex items-center space-x-3 text-sm">
+                  <AlertTriangle size={18} />
+                  <span>{radarError}</span>
+                </div>
+              )}
+
+              {/* RADAR RESULTS */}
+              {radarResult && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* TRAFFIC LIGHT GO/NO-GO CARD */}
+                  <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between items-center text-center">
+                    <h3 className="font-semibold text-neutral-300 text-sm tracking-wider uppercase mb-4">THE CLEANER 9,000 Threshold Verdict</h3>
+                    
+                    <div className="flex flex-col items-center">
+                      {radarResult.status === 'GO' ? (
+                        <>
+                          <div className="w-24 h-24 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4 animate-pulse">
+                            <CheckCircle2 size={48} />
+                          </div>
+                          <span className="text-3xl font-extrabold text-emerald-400 tracking-wide">GO</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-24 h-24 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mb-4">
+                            <XCircle size={48} />
+                          </div>
+                          <span className="text-3xl font-extrabold text-rose-400 tracking-wide">NO-GO</span>
+                        </>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-neutral-400 leading-relaxed max-w-[240px] mt-6">
+                      {radarResult.status === 'GO' 
+                        ? `Market is winnable. ${radarResult.weakCount} of the top 3 ranking business profiles have fewer than 100 reviews.`
+                        : `Market is saturated. Only ${radarResult.weakCount} of the top 3 ranking business profiles have fewer than 100 reviews.`
+                      }
+                    </p>
+                  </div>
+
+                  {/* COMPETITOR TABLE */}
+                  <div className="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden flex flex-col justify-between">
+                    <div className="p-6 border-b border-neutral-800">
+                      <h3 className="font-semibold text-neutral-100">Top 3 Organic Google Maps Competitors</h3>
+                      <p className="text-xs text-neutral-400 mt-0.5">Scanned for &quot;{radarResult.suburb}&quot; using Maps metadata.</p>
+                    </div>
+
+                    <div className="overflow-x-auto flex-1">
+                      <table className="w-full text-left text-sm border-collapse">
+                        <thead>
+                          <tr className="bg-neutral-950/40 text-neutral-400 border-b border-neutral-800 text-xs uppercase font-semibold">
+                            <th className="px-6 py-4 text-center">Rank</th>
+                            <th className="px-6 py-4">Name</th>
+                            <th className="px-6 py-4 text-center">Reviews</th>
+                            <th className="px-6 py-4 text-center">Avg Rating</th>
+                            <th className="px-6 py-4 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-850">
+                          {radarResult.competitors.map((comp) => (
+                            <tr key={comp.rank} className="hover:bg-neutral-900/40 transition-colors">
+                              <td className="px-6 py-4 text-center font-bold text-neutral-400">#{comp.rank}</td>
+                              <td className="px-6 py-4 font-semibold text-neutral-200">{comp.name}</td>
+                              <td className="px-6 py-4 text-center font-bold text-neutral-300">{comp.reviewCount}</td>
+                              <td className="px-6 py-4 text-center text-amber-400 font-bold">{comp.rating.toFixed(1)} ★</td>
+                              <td className="px-6 py-4 text-center">
+                                {comp.reviewCount < 100 ? (
+                                  <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
+                                    Vulnerable
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 text-[10px] font-semibold bg-neutral-800 text-neutral-400 border border-neutral-700 rounded-full">
+                                    Established
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==================== TAB: GBP ==================== */}
+          {activeTab === 'gbp' && (
+            <div className="space-y-8">
+              {/* GBP LISTINGS & AI WRITER */}
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
+                <div className="p-6 border-b border-neutral-800 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-base text-neutral-100">Active Service Area listings</h3>
+                    <p className="text-xs text-neutral-400 mt-0.5">Profiles manually created with exact-match naming strategies and synced to THE CLEANER 9,000.</p>
+                  </div>
+                  <button 
+                    onClick={() => fetchGbpListings(true)}
+                    disabled={gbpSyncing}
+                    className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-semibold rounded-xl text-white shadow-lg shadow-indigo-600/20 transition-all"
+                  >
+                    <RefreshCw size={14} className={gbpSyncing ? 'animate-spin' : ''} />
+                    <span>Sync active Profiles</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  {gbpListings.length === 0 ? (
+                    <div className="p-12 text-center">
+                      <Store className="mx-auto text-neutral-600 mb-3" size={32} />
+                      <p className="text-sm text-neutral-400">Click the sync button above to sync active GBPs.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-neutral-850">
+                      {gbpListings.map((listing) => {
+                        const listingKey = listing.city;
+                        const post = activeGbpPosts[listingKey];
+                        const isGenerating = gbpPostingIds[listingKey];
+
+                        return (
+                          <div key={listing.city} className="p-6 space-y-4 hover:bg-neutral-900/20 transition-colors">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                              <div className="flex items-start space-x-3.5">
+                                <div className="p-2.5 bg-neutral-800 rounded-xl text-neutral-300 border border-neutral-700/60">
+                                  <Store size={20} />
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-neutral-200">{listing.name}</h4>
+                                  <div className="flex items-center space-x-3 text-xs text-neutral-400 mt-1">
+                                    <span className="flex items-center space-x-1">
+                                      <MapPin size={12} />
+                                      <span>{listing.city}</span>
+                                    </span>
+                                    <span>•</span>
+                                    <span>{listing.review_count} Reviews</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center space-x-3">
+                                <a 
+                                  href={listing.google_review_link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="flex items-center space-x-1.5 px-3 py-2 bg-neutral-800 hover:bg-neutral-750 text-xs font-semibold rounded-lg text-neutral-300 border border-neutral-700 transition-all"
+                                >
+                                  <span>Review Link</span>
+                                  <ExternalLink size={12} />
+                                </a>
+
+                                <button 
+                                  onClick={() => handleGenerateWeeklyPost(listing)}
+                                  disabled={isGenerating}
+                                  className="flex items-center space-x-1.5 px-3 py-2 bg-indigo-600/90 hover:bg-indigo-600 disabled:opacity-50 text-xs font-semibold rounded-lg text-white shadow-md shadow-indigo-600/10 transition-all"
+                                >
+                                  <Sparkles size={13} />
+                                  <span>{isGenerating ? 'Generating...' : 'Generate & Post SEO Update'}</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Generated Post Box */}
+                            {post && (
+                              <div className="bg-neutral-950/70 border border-neutral-850 rounded-xl p-4 space-y-3 animate-fadeIn">
+                                <div className="flex items-center justify-between text-xs border-b border-neutral-900 pb-2">
+                                  <span className="text-neutral-400 font-semibold flex items-center space-x-1.5">
+                                    <Sparkles size={12} className="text-indigo-400" />
+                                    <span>Google Business Profile SEO Draft</span>
+                                  </span>
+                                  <div className="flex items-center space-x-4 text-neutral-400">
+                                    <span>Characters: <b className="text-neutral-300">{post.charCount}/750</b></span>
+                                    <span>Keyword Occurrences: <b className="text-indigo-400">{post.keywordOccurrences}x</b></span>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-neutral-300 leading-relaxed font-sans">{post.postContent}</p>
+                                <div className="flex items-center space-x-2 text-[10px] text-emerald-400 font-semibold bg-emerald-500/5 px-2.5 py-1 rounded border border-emerald-500/10 w-fit">
+                                  <CheckCircle2 size={11} />
+                                  <span>Simulated publish to localPosts API endpoint completed successfully</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ==================== TAB: REVIEWS ==================== */}
+          {activeTab === 'reviews' && (
+            <div className="space-y-8 animate-fadeIn">
+              
+              {/* LIVE DISPATCH BOARD */}
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+                  <div>
+                    <h3 className="font-semibold text-base text-neutral-100 flex items-center space-x-2">
+                      <RefreshCw size={16} className={`text-indigo-400 ${dispatchesLoading ? 'animate-spin' : ''}`} />
+                      <span>Live Cleaner Dispatch Board</span>
+                    </h3>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      Monitor active FSM dispatch instances broadcasting regional job alerts.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={fetchDispatches}
+                      disabled={dispatchesLoading}
+                      className="p-1.5 bg-neutral-800 hover:bg-neutral-750 border border-neutral-700 text-neutral-300 text-xs font-semibold rounded-lg flex items-center space-x-1"
+                    >
+                      <RefreshCw size={12} className={dispatchesLoading ? 'animate-spin' : ''} />
+                      <span>Refresh</span>
+                    </button>
+                    <button 
+                      onClick={handleResetDispatches}
+                      className="p-1.5 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-900/50 text-rose-300 text-xs font-semibold rounded-lg flex items-center space-x-1"
+                    >
+                      <Trash2 size={12} />
+                      <span>Reset Dispatches</span>
+                    </button>
+                  </div>
+                </div>
+
+                {dispatchesList.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-neutral-500">
+                    No active dispatches. Book a new job in the <b>Mission Control</b> tab to launch the FSM.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {dispatchesList.map((d) => {
+                      const formattedTime = new Date(d.appointment_time).toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' at ' + new Date(d.appointment_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      
+                      return (
+                        <div key={d.job_id} className="bg-neutral-950/50 border border-neutral-800/80 rounded-xl p-4 space-y-3 relative overflow-hidden">
+                          {/* Top Status Header */}
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="text-xs font-mono text-neutral-455">JOB ID: {d.job_id.substring(0, 12)}</div>
+                              <h4 className="font-bold text-neutral-200 text-sm">{d.customer_name}</h4>
+                            </div>
+                            
+                            {/* Badges mapped to FSM status */}
+                            <div>
+                              {d.status === 'BOOKING_CONFIRMED' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-neutral-800 text-neutral-300 border border-neutral-700">
+                                  Confirmed
+                                </span>
+                              )}
+                              {d.status === 'DISPATCH_BROADCAST' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 animate-pulse">
+                                  Broadcasting...
+                                </span>
+                              )}
+                              {d.status === 'AWAITING_RESPONSE' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+                                  Awaiting YES (Try {d.attempts})
+                                </span>
+                              )}
+                              {d.status === 'ASSIGNED' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-450 border border-emerald-500/20">
+                                  Assigned
+                                </span>
+                              )}
+                              {d.status === 'CONFIRMED' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                  FSM Confirmed
+                                </span>
+                              )}
+                              {d.status === 'ALERT_OPERATOR' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-rose-500/10 text-rose-450 border border-rose-500/20 animate-bounce">
+                                  Operator Alert!
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Details Row */}
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-neutral-900 pt-2.5">
+                            <div>
+                              <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Location:</span>
+                              <span className="text-neutral-300 font-medium">{d.address}, {d.city}</span>
+                            </div>
+                            <div>
+                              <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Region Segment:</span>
+                              <span className="text-indigo-400 font-medium capitalize">{d.region} GTA</span>
+                            </div>
+                            <div>
+                              <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Appointment:</span>
+                              <span className="text-neutral-300 font-medium">{formattedTime}</span>
+                            </div>
+                            <div>
+                              <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Prices (Wholesale / Retail):</span>
+                              <span className="text-neutral-350 font-medium">${d.wholesale_price} / ${d.retail_price}</span>
+                            </div>
+                          </div>
+
+                          {/* Cleaner details if assigned */}
+                          {(d.status === 'ASSIGNED' || d.status === 'CONFIRMED') && d.assigned_contractor_name && (
+                            <div className="bg-emerald-950/30 border border-emerald-900/40 p-2.5 rounded-lg text-xs space-y-1">
+                              <div className="font-semibold text-emerald-450">Cleaner Claimed Job:</div>
+                              <div className="text-neutral-300">{d.assigned_contractor_name} ({d.assigned_contractor_phone})</div>
+                            </div>
+                          )}
+
+                          {/* FSM simulator action buttons */}
+                          {d.status === 'AWAITING_RESPONSE' && (
+                            <div className="flex items-center space-x-2 pt-2 border-t border-neutral-900">
+                              <button
+                                onClick={() => handleSimulateClaim(d.job_id, 'Alice Green', '+19055550191')}
+                                className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold rounded transition-all animate-pulse"
+                              >
+                                Simulate Claim
+                              </button>
+                              <button
+                                onClick={() => handleSimulateTimeout(d.job_id)}
+                                className="flex-1 py-1.5 bg-neutral-800 hover:bg-neutral-750 text-neutral-300 text-[10px] font-bold rounded border border-neutral-700 transition-all"
+                              >
+                                Simulate Timeout (15m)
+                              </button>
+                            </div>
+                          )}
+
+                          {d.status === 'ALERT_OPERATOR' && (
+                            <div className="bg-rose-950/20 border border-rose-900/30 p-2.5 rounded-lg text-xs space-y-1">
+                              <div className="font-semibold text-rose-450">Timeout Reached (3 attempts):</div>
+                              <p className="text-[10px] text-neutral-400">No regional cleaners claimed. Call backup agency or assign manually.</p>
+                              <button
+                                onClick={() => handleSimulateClaim(d.job_id, 'Agency Contractor', '+14165559999')}
+                                className="w-full mt-1.5 py-1.5 bg-rose-900/50 hover:bg-rose-900/70 text-rose-200 text-[10px] font-bold rounded border border-rose-800/40"
+                              >
+                                Assign Agency Backup
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* REVIEW GAP COMPARATOR PROGRESS GRID */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {gbpListings.map((listing) => {
+                  const benchmarks: Record<string, number> = {
+                    Mississauga: 220,
+                    Oakville: 310,
+                    Brampton: 68,
+                    Vaughan: 110,
+                    Scarborough: 120
+                  };
+                  const competitorBenchmark = benchmarks[listing.city] || 150;
+                  const gap = competitorBenchmark - listing.review_count;
+                  
+                  // Calculate progress percentage
+                  const pct = Math.min(100, Math.max(5, Math.round((listing.review_count / competitorBenchmark) * 100)));
+
+                  return (
+                    <div key={listing.city} className="bg-neutral-900 border border-neutral-800 p-5 rounded-2xl flex flex-col justify-between hover:border-neutral-750 transition-all">
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-bold text-neutral-100 flex items-center space-x-1.5">
+                            <MapPin size={14} className="text-neutral-500" />
+                            <span>{listing.city}</span>
+                          </span>
+                          {gap <= 0 ? (
+                            <span className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full font-semibold">
+                              Leader
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-2 py-0.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full font-semibold">
+                              Gap: -{gap}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-1 mb-4">
+                          <div className="flex justify-between text-xs text-neutral-400">
+                            <span>Our Reviews: <b className="text-indigo-400">{listing.review_count}</b></span>
+                            <span>Benchmark: <b>{competitorBenchmark}</b></span>
+                          </div>
+                          
+                          <div className="w-full h-2.5 bg-neutral-950 rounded-full overflow-hidden border border-neutral-800">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${gap <= 0 ? 'bg-emerald-500' : 'bg-indigo-600'}`} 
+                              style={{ width: `${pct}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-[10px] text-neutral-400 border-t border-neutral-850 pt-2.5 flex items-center justify-between">
+                        <span>Review Deep Link:</span>
+                        <a 
+                          href={listing.google_review_link} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-0.5"
+                        >
+                          <span>Open link</span>
+                          <ExternalLink size={10} />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                {/* COMPLETED JOBS & MANUAL SMS TRIGGER CARD */}
+                <div className="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden flex flex-col">
+                  <div className="p-6 border-b border-neutral-800">
+                    <h3 className="font-semibold text-base text-neutral-100">Review Blitz Dispatch</h3>
+                    <p className="text-xs text-neutral-400 mt-0.5">List of recently completed bookings. Click to trigger the Twilio review farming automation.</p>
+                  </div>
+
+                  <div className="overflow-x-auto flex-1">
+                    <table className="w-full text-left text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-neutral-950/40 text-neutral-400 border-b border-neutral-800 text-xs uppercase font-semibold">
+                          <th className="px-6 py-4">Customer / Job</th>
+                          <th className="px-6 py-4">City</th>
+                          <th className="px-6 py-4">Phone</th>
+                          <th className="px-6 py-4 text-center">Blitz Status</th>
+                          <th className="px-6 py-4 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-850">
+                        {completedJobs.map((job) => {
+                          const stateStatus = triggeringJobIds[job.id] || '';
+                          
+                          // Check if job exists in the review logs
+                          const requestLog = reviewLogs.find(l => l.job_id === job.id);
+                          const logStatus = requestLog ? requestLog.status : '';
+                          const activeStatus = stateStatus || logStatus || 'not_sent';
+
+                          return (
+                            <tr key={job.id} className="hover:bg-neutral-900/40 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="font-semibold text-neutral-200">{job.customer}</div>
+                                <div className="text-[10px] text-neutral-400 font-mono mt-0.5">{job.id} • {job.service}</div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="text-xs font-semibold text-neutral-300 flex items-center space-x-1">
+                                  <MapPin size={12} className="text-neutral-500" />
+                                  <span>{job.city}</span>
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-xs font-mono text-neutral-400">{job.phone}</td>
+                              <td className="px-6 py-4 text-center">
+                                {activeStatus === 'sent' && (
+                                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    <CheckCircle2 size={10} />
+                                    <span>Sent</span>
+                                  </span>
+                                )}
+                                {activeStatus === 'pending' && (
+                                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+                                    <Clock size={10} />
+                                    <span>Pending...</span>
+                                  </span>
+                                )}
+                                {activeStatus === 'failed' && (
+                                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                                    <XCircle size={10} />
+                                    <span>Skipped/Error</span>
+                                  </span>
+                                )}
+                                {activeStatus === 'not_sent' && (
+                                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-neutral-800 text-neutral-400 border border-neutral-700">
+                                    <span>Not Sent</span>
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center justify-center space-x-2">
+                                  <button
+                                    onClick={() => handleTriggerReview(job.id, false)}
+                                    disabled={activeStatus === 'pending' || activeStatus === 'sent'}
+                                    className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-750 disabled:opacity-50 text-[10px] font-bold rounded text-neutral-300 border border-neutral-700 flex items-center space-x-1"
+                                    title="Simulates standard 30-minute webhook delay trigger"
+                                  >
+                                    <Clock size={10} />
+                                    <span>Delay (30m)</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleTriggerReview(job.id, true)}
+                                    disabled={activeStatus === 'pending' || activeStatus === 'sent'}
+                                    className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-[10px] font-bold rounded text-white flex items-center space-x-1"
+                                    title="Triggers Twilio SMS request immediately for manual override/testing"
+                                  >
+                                    <Send size={10} />
+                                    <span>Send Now</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* LOGGED SMS DISPATCH ACTIVITY LIST */}
+                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-4 border-b border-neutral-800 pb-3">
+                      <div>
+                        <h3 className="font-semibold text-neutral-100">Live SMS Activity Feed</h3>
+                        <p className="text-[10px] text-neutral-400">Database log of sent keyword-coached review requests.</p>
+                      </div>
+                      <button 
+                        onClick={fetchReviewLogs}
+                        disabled={reviewLogsLoading}
+                        className="p-1.5 bg-neutral-800 border border-neutral-750 text-neutral-300 rounded hover:bg-neutral-700 disabled:opacity-50 transition-all"
+                      >
+                        <RefreshCw size={12} className={reviewLogsLoading ? 'animate-spin' : ''} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4 max-h-[460px] overflow-y-auto pr-1">
+                      {reviewLogs.length === 0 ? (
+                        <div className="text-center py-12 text-neutral-500 text-xs">
+                          <MessageSquare size={24} className="mx-auto mb-2 text-neutral-600" />
+                          <span>No logged messages yet.</span>
+                        </div>
+                      ) : (
+                        reviewLogs.map((log) => (
+                          <div key={log.id} className="bg-neutral-950/60 border border-neutral-850 p-3.5 rounded-xl space-y-2">
+                            <div className="flex items-center justify-between text-[10px] text-neutral-400 border-b border-neutral-900 pb-1.5">
+                              <span className="font-semibold text-neutral-300">{log.customer_name} ({log.city})</span>
+                              <span>{new Date(log.sms_sent_at || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            
+                            <p className="text-[11px] text-neutral-300 leading-relaxed font-sans italic bg-neutral-950/40 p-2 rounded border border-neutral-900">
+                              &quot;{log.sms_body}&quot;
+                            </p>
+                            
+                            <div className="flex items-center justify-between text-[9px]">
+                              <span className="text-neutral-500 font-mono">Recipient: {log.customer_phone}</span>
+                              {log.status === 'sent' ? (
+                                <span className="text-emerald-400 font-semibold flex items-center space-x-0.5">
+                                  <span className="w-1 h-1 rounded-full bg-emerald-500"></span>
+                                  <span>Delivered</span>
+                                </span>
+                              ) : log.status === 'pending' ? (
+                                <span className="text-amber-400 font-semibold flex items-center space-x-0.5">
+                                  <span className="w-1 h-1 rounded-full bg-amber-500"></span>
+                                  <span>Scheduled (30m delay)</span>
+                                </span>
+                              ) : (
+                                <span className="text-rose-400 font-semibold flex items-center space-x-0.5">
+                                  <span className="w-1 h-1 rounded-full bg-rose-500"></span>
+                                  <span>Skipped / Error</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* ==================== TAB: MISSION CONTROL ==================== */}
+          {activeTab === 'mission' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fadeIn">
+              
+              {/* LEFT COLUMN: SOFTPHONE & SCRIPT */}
+              <div className="space-y-8">
+                
+                {/* TWILIO WEBSOFTPHONE WIDGET */}
+                <div className={`bg-neutral-900 border p-6 rounded-2xl transition-all duration-300 relative overflow-hidden ${
+                  phoneStatus === 'ringing' ? 'border-amber-500/80 shadow-[0_0_20px_rgba(245,158,11,0.15)]' : 
+                  phoneStatus === 'in-call' ? 'border-emerald-500/80 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'border-neutral-800'
+                }`}>
+                  {phoneStatus === 'ringing' && (
+                    <div className="absolute inset-0 bg-amber-550/5 animate-pulse pointer-events-none"></div>
+                  )}
+                  {phoneStatus === 'in-call' && (
+                    <div className="absolute inset-0 bg-emerald-550/5 pointer-events-none"></div>
+                  )}
+
+                  <div className="flex items-center justify-between mb-4 border-b border-neutral-850 pb-3">
+                    <div>
+                      <h3 className="font-semibold text-base text-neutral-100 flex items-center space-x-2">
+                        <PhoneCall size={16} className="text-indigo-400 animate-pulse" />
+                        <span>Twilio Web Softphone</span>
+                      </h3>
+                      <p className="text-[10px] text-neutral-400">GTA Dispatch Operator Center</p>
+                    </div>
+                    <div>
+                      {phoneStatus === 'idle' && (
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-800 text-neutral-400 border border-neutral-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-neutral-500"></span>
+                          <span>Idle / Connected</span>
+                        </span>
+                      )}
+                      {phoneStatus === 'ringing' && (
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                          <span>Inbound Ringing</span>
+                        </span>
+                      )}
+                      {phoneStatus === 'in-call' && (
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>In Call ({Math.floor(callDuration / 60)}:{(callDuration % 60).toString().padStart(2, '0')})</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Softphone Dialer Interface */}
+                  {phoneStatus === 'idle' && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Outbound Dial Phone</label>
+                        <div className="flex space-x-2">
+                          <input 
+                            type="text" 
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            placeholder="+19055550123"
+                            className="flex-1 bg-neutral-950 border border-neutral-850 focus:border-indigo-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-mono text-neutral-255 transition-all"
+                          />
+                          <button
+                            onClick={() => {
+                              if (phoneNumber) {
+                                setPhoneStatus('in-call');
+                                setActiveCallName('Outbound Call');
+                              } else {
+                                alert('Enter a phone number to dial.');
+                              }
+                            }}
+                            className="px-4 py-2 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5"
+                          >
+                            <Phone size={12} />
+                            <span>Dial</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Inbound Simulator triggers */}
+                      <div className="bg-neutral-950/60 border border-neutral-850 p-4 rounded-xl space-y-3">
+                        <div className="text-xs font-semibold text-neutral-300">Inbound Call Simulators:</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => triggerInboundCallSimulation('Sarah Jenkins', '+19055550123', '1248 Lakeshore Rd', 'Oakville', 3, 2, false)}
+                            className="p-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-[10px] font-medium text-neutral-350 rounded-lg text-left space-y-1 transition-all"
+                          >
+                            <div className="font-bold text-neutral-250">Sarah Jenkins</div>
+                            <div className="text-neutral-400">Oakville • 3B/2B</div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => triggerInboundCallSimulation('John Doe', '+14165550456', '789 Hurontario St', 'Mississauga', 1, 1, false)}
+                            className="p-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-[10px] font-medium text-neutral-355 rounded-lg text-left space-y-1 transition-all"
+                          >
+                            <div className="font-bold text-neutral-250">John Doe</div>
+                            <div className="text-neutral-400">Mississauga • 1B/1B</div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => triggerInboundCallSimulation('Rajesh Patel', '+12895550789', '45 Main St S', 'Brampton', 2, 1, true)}
+                            className="p-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-[10px] font-medium text-neutral-360 rounded-lg text-left space-y-1 transition-all"
+                          >
+                            <div className="font-bold text-neutral-250">Rajesh Patel</div>
+                            <div className="text-neutral-400">Brampton • 2B/1B + DC</div>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ringing incoming banner */}
+                  {phoneStatus === 'ringing' && (
+                    <div className="space-y-4 animate-fadeIn">
+                      <div className="bg-neutral-950 p-4 rounded-xl border border-amber-500/30 flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-3 bg-amber-500/10 rounded-full text-amber-400 animate-bounce">
+                            <PhoneCall size={20} />
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Incoming Request</div>
+                            <h4 className="font-bold text-neutral-200 text-sm">{activeCallName || 'Unknown Caller'}</h4>
+                            <p className="text-xs text-neutral-400 font-mono">{phoneNumber}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => setPhoneStatus('in-call')}
+                          className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-lg shadow-emerald-650/20"
+                        >
+                          <Phone size={14} />
+                          <span>Accept Call</span>
+                        </button>
+                        <button
+                          onClick={() => setPhoneStatus('idle')}
+                          className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-lg shadow-rose-650/20"
+                        >
+                          <PhoneOff size={14} />
+                          <span>Decline</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Active In-Call controls */}
+                  {phoneStatus === 'in-call' && (
+                    <div className="space-y-4 animate-fadeIn">
+                      <div className="bg-neutral-950 p-4 rounded-xl border border-emerald-500/30 flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-3 bg-emerald-500/10 rounded-full text-emerald-400 animate-pulse">
+                            <Phone size={20} />
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">In-Call Connected</div>
+                            <h4 className="font-bold text-neutral-200 text-sm">{activeCallName}</h4>
+                            <p className="text-xs text-neutral-400 font-mono">{phoneNumber}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => setIsMuted(!isMuted)}
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border flex items-center justify-center space-x-1.5 transition-all ${
+                            isMuted 
+                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' 
+                              : 'bg-neutral-800 border-neutral-700 hover:bg-neutral-750 text-neutral-300'
+                          }`}
+                        >
+                          {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                          <span>{isMuted ? 'Muted' : 'Mute'}</span>
+                        </button>
+                        <button
+                          onClick={() => setPhoneStatus('idle')}
+                          className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-lg shadow-rose-650/20"
+                        >
+                          <PhoneOff size={14} />
+                          <span>Hang Up</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* DYNAMIC SCROLLABLE CALL SCRIPT */}
+                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 flex flex-col h-[400px]">
+                  <div className="border-b border-neutral-850 pb-3 mb-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-neutral-100 text-sm">Interactive GTA Call Script</h3>
+                      <p className="text-[10px] text-neutral-400">Coaching script updates live with calculator inputs.</p>
+                    </div>
+                    <span className="text-[9px] px-2 py-0.5 bg-neutral-950 border border-neutral-800 text-indigo-400 rounded-full font-mono font-bold">
+                      Flat-rate System
+                    </span>
+                  </div>
+
+                  <div className="overflow-y-auto space-y-4 flex-1 pr-1 text-xs text-neutral-300 leading-relaxed font-sans scrollbar-thin">
+                    <div className="space-y-1.5">
+                      <div className="font-bold text-indigo-455 text-[10px] uppercase tracking-wider">Step 1: Friendly Greeting</div>
+                      <p className="bg-neutral-950/60 p-3 rounded-xl border border-neutral-850">
+                        &quot;Thank you for calling <b>THE CLEANER 9,000</b>! This is {activeCallName ? 'your operator' : 'the dispatch desk'} speaking, how can I help make your home sparkle today?&quot;
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="font-bold text-indigo-455 text-[10px] uppercase tracking-wider">Step 2: Bedrooms & Bathrooms Qualification</div>
+                      <p className="bg-neutral-950/60 p-3 rounded-xl border border-neutral-850">
+                        &quot;To give you a precise quote, may I ask how many bedrooms and bathrooms are in your home? ...Excellent.&quot;
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="font-bold text-indigo-455 text-[10px] uppercase tracking-wider">Step 3: Presentation of Quote</div>
+                      <div className="bg-neutral-950/60 p-3 rounded-xl border border-neutral-850 space-y-2">
+                        <p>
+                          &quot;Great! For a <b>{calcBeds} Bed / {calcBaths} Bath</b> home in <b>{bookingCity}</b>, our standard retail flat rate is <b>${calculateFrontendPrices(calcBeds, calcBaths, calcIsDeep).retail}</b>.
+                          {calcIsDeep ? ' This rate includes our Deep Clean add-on to ensure heavy grease, grime, and baseboards are detailed.' : ' This covers all living areas, kitchens, bathrooms, and dusting/mopping throughout.'}&quot;
+                        </p>
+                        <div className="border-t border-neutral-900 pt-2 flex items-center justify-between text-[10px]">
+                          <span className="text-neutral-500 font-medium">Internal Margins:</span>
+                          <span className="text-emerald-450 font-bold">Wholesale Payout: ${calculateFrontendPrices(calcBeds, calcBaths, calcIsDeep).wholesale} | Net Profit: ${calculateFrontendPrices(calcBeds, calcBaths, calcIsDeep).profit}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="font-bold text-indigo-455 text-[10px] uppercase tracking-wider">Step 4: Close and Book</div>
+                      <p className="bg-neutral-950/60 p-3 rounded-xl border border-neutral-850">
+                        &quot;We have local cleaners in your neighborhood ready. What date and time works best to schedule your booking? ...Perfect, I will lock that in and dispatch your cleaner immediately!&quot;
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* RIGHT COLUMN: CALCULATOR & BOOKING FORM */}
+              <div className="space-y-8">
+                
+                {/* INSTANT QUOTE CALCULATOR */}
+                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-5">
+                  <div>
+                    <h3 className="font-semibold text-base text-neutral-100">GTA Quoting Engine</h3>
+                    <p className="text-xs text-neutral-400 mt-0.5">Adjust beds/baths/deep clean to calculate client price vs cleaner payout.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Bedrooms</label>
+                      <select 
+                        value={calcBeds}
+                        onChange={(e) => setCalcBeds(Number(e.target.value))}
+                        className="w-full bg-neutral-950 border border-neutral-850 focus:border-indigo-500 focus:outline-none rounded-xl px-3 py-2.5 text-sm text-neutral-250 transition-all font-medium"
+                      >
+                        <option value={1}>1 Bed</option>
+                        <option value={2}>2 Beds</option>
+                        <option value={3}>3 Beds</option>
+                        <option value={4}>4 Beds</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Bathrooms</label>
+                      <select 
+                        value={calcBaths}
+                        onChange={(e) => setCalcBaths(Number(e.target.value))}
+                        className="w-full bg-neutral-950 border border-neutral-850 focus:border-indigo-500 focus:outline-none rounded-xl px-3 py-2.5 text-sm text-neutral-250 transition-all font-medium"
+                      >
+                        <option value={1}>1 Bath</option>
+                        <option value={2}>2 Baths</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Deep Clean checkbox */}
+                  <label className="flex items-center space-x-3 p-3 bg-neutral-950/40 hover:bg-neutral-950/75 border border-neutral-850 rounded-xl cursor-pointer transition-all">
+                    <input 
+                      type="checkbox"
+                      checked={calcIsDeep}
+                      onChange={(e) => setCalcIsDeep(e.target.checked)}
+                      className="rounded border-neutral-800 text-indigo-650 focus:ring-0 w-4 h-4 bg-neutral-900"
+                    />
+                    <div>
+                      <div className="text-xs font-semibold text-neutral-200">Include Deep Clean Add-On</div>
+                      <div className="text-[10px] text-neutral-450 mt-0.5">+$70 Retail / +$35 Wholesale payout</div>
+                    </div>
+                  </label>
+
+                  {/* Side-by-Side pricing cards */}
+                  <div className="grid grid-cols-3 gap-3 border-t border-neutral-850 pt-4">
+                    <div className="bg-neutral-950/60 border border-neutral-850 p-3.5 rounded-xl text-center">
+                      <span className="text-[9px] text-neutral-500 uppercase tracking-wider block font-bold mb-1">Retail Flat-rate</span>
+                      <span className="text-lg font-bold text-neutral-100">${calculateFrontendPrices(calcBeds, calcBaths, calcIsDeep).retail}</span>
+                    </div>
+
+                    <div className="bg-neutral-950/60 border border-neutral-850 p-3.5 rounded-xl text-center">
+                      <span className="text-[9px] text-neutral-500 uppercase tracking-wider block font-bold mb-1">Contractor Payout</span>
+                      <span className="text-lg font-bold text-indigo-400">${calculateFrontendPrices(calcBeds, calcBaths, calcIsDeep).wholesale}</span>
+                    </div>
+
+                    <div className="bg-emerald-950/30 border border-emerald-900/20 p-3.5 rounded-xl text-center">
+                      <span className="text-[9px] text-emerald-500 uppercase tracking-wider block font-bold mb-1">Net Margin</span>
+                      <span className="text-lg font-bold text-emerald-400">${calculateFrontendPrices(calcBeds, calcBaths, calcIsDeep).profit}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BOOK JOB FORM */}
+                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-base text-neutral-100">Schedule & Register Booking</h3>
+                    <p className="text-xs text-neutral-400 mt-0.5">Input customer metadata. Triggering books job in DB and launches regional FSM dispatch.</p>
+                  </div>
+
+                  <form onSubmit={handleBookJobSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Customer Name</label>
+                        <input 
+                          type="text" 
+                          value={bookingName}
+                          onChange={(e) => setBookingName(e.target.value)}
+                          placeholder="Jane Doe"
+                          className="w-full bg-neutral-950 border border-neutral-850 focus:border-indigo-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm text-neutral-200 transition-all"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Phone Number</label>
+                        <input 
+                          type="text" 
+                          value={bookingPhone}
+                          onChange={(e) => setBookingPhone(e.target.value)}
+                          placeholder="+19055550123"
+                          className="w-full bg-neutral-950 border border-neutral-850 focus:border-indigo-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-mono text-neutral-200 transition-all"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Address</label>
+                      <input 
+                        type="text" 
+                        value={bookingAddress}
+                        onChange={(e) => setBookingAddress(e.target.value)}
+                        placeholder="123 Queen St W"
+                        className="w-full bg-neutral-950 border border-neutral-850 focus:border-indigo-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm text-neutral-200 transition-all"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">City (GTA Suburb)</label>
+                        <select 
+                          value={bookingCity}
+                          onChange={(e) => setBookingCity(e.target.value)}
+                          className="w-full bg-neutral-950 border border-neutral-850 focus:border-indigo-500 focus:outline-none rounded-xl px-3 py-2.5 text-sm text-neutral-250 transition-all font-medium"
+                        >
+                          <option value="Oakville">Oakville (West)</option>
+                          <option value="Mississauga">Mississauga (West)</option>
+                          <option value="Brampton">Brampton (North)</option>
+                          <option value="Vaughan">Vaughan (North)</option>
+                          <option value="Scarborough">Scarborough (East)</option>
+                          <option value="Toronto">Toronto (Central)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Appointment Time</label>
+                        <input 
+                          type="datetime-local" 
+                          value={bookingDate}
+                          onChange={(e) => setBookingDate(e.target.value)}
+                          className="w-full bg-neutral-950 border border-neutral-850 focus:border-indigo-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm text-neutral-200 transition-all"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Recurring Frequency</label>
+                      <select 
+                        value={bookingFrequency}
+                        onChange={(e) => setBookingFrequency(e.target.value as 'one-off' | 'weekly' | 'bi-weekly' | 'monthly')}
+                        className="w-full bg-neutral-950 border border-neutral-850 focus:border-indigo-500 focus:outline-none rounded-xl px-3 py-2.5 text-sm text-neutral-255 transition-all font-medium"
+                      >
+                        <option value="one-off">One-off Cleaning</option>
+                        <option value="weekly">Weekly Recurring</option>
+                        <option value="bi-weekly">Bi-weekly Recurring</option>
+                        <option value="monthly">Monthly Recurring</option>
+                      </select>
+                    </div>
+
+                    {/* Messages feedback */}
+                    {bookingSuccess && (
+                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-medium animate-fadeIn">
+                        {bookingSuccess}
+                      </div>
+                    )}
+                    {bookingError && (
+                      <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-xs font-medium animate-fadeIn">
+                        {bookingError}
+                      </div>
+                    )}
+
+                    <button 
+                      type="submit" 
+                      disabled={bookingLoading}
+                      className="w-full bg-indigo-650 hover:bg-indigo-600 text-white font-bold rounded-xl py-3 text-sm flex items-center justify-center space-x-2 transition-all duration-200 disabled:opacity-50 shadow-lg shadow-indigo-605/20"
+                    >
+                      <Plus size={16} />
+                      <span>{bookingLoading ? 'Booking Job...' : 'Confirm Booking & Dispatch'}</span>
+                    </button>
+                  </form>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {activeTab === 'guide' && (
+            <div className="space-y-8 animate-fadeIn max-w-4xl mx-auto pb-12">
+              
+              {/* INTRO HERO */}
+              <div className="bg-neutral-900 border border-neutral-800 p-8 rounded-2xl relative overflow-hidden">
+                <div className="absolute right-0 top-0 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="p-2.5 bg-indigo-500/10 rounded-xl text-indigo-400">
+                    <BookOpen size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold text-neutral-100">THE CLEANER 9,000 Playbook</h3>
+                </div>
+                <p className="text-sm text-neutral-355 leading-relaxed">
+                  Welcome to the official interactive operational cockpit. This guide will walk you through the GTA house cleaning automation strategy. By combining Google Places intelligence, GPT-4o copy optimization, simulated Twilio softphone scripting, and an automated SMS dispatch state machine, this system runs your entire dispatch desk in one dashboard.
+                </p>
+              </div>
+
+              {/* CORE JOURNEY STAGES */}
+              <div className="space-y-6">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-450 flex items-center space-x-2">
+                  <span>Step-by-Step Operator Journey</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-550"></span>
+                </h4>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Step 1 */}
+                  <div className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 p-6 rounded-2xl transition-all flex items-start space-x-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center font-bold text-indigo-400 shrink-0">1</div>
+                    <div className="space-y-1">
+                      <h5 className="font-semibold text-neutral-100 text-sm">Simulate an Inbound Call</h5>
+                      <p className="text-xs text-neutral-400 leading-relaxed">
+                        Go to the <span className="text-indigo-400 font-medium">Mission Control</span> tab. Scroll down to the <strong>Inbound Call Simulators</strong> box on the left panel, and click on any customer card (e.g., Sarah Jenkins). The Twilio softphone widget will transition to an <strong>Inbound Ringing</strong> state.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 p-6 rounded-2xl transition-all flex items-start space-x-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center font-bold text-indigo-400 shrink-0">2</div>
+                    <div className="space-y-1">
+                      <h5 className="font-semibold text-neutral-100 text-sm">Follow Script & Calculate Price</h5>
+                      <p className="text-xs text-neutral-400 leading-relaxed">
+                        Once ringing, click <strong>Accept Call</strong> or look at the active call details. Read the step-by-step phone scripts on the left panel to guide the conversation. Meanwhile, toggle the number of bedrooms, bathrooms, and whether a deep clean is required on the right panel. The <strong>Instant Quote Calculator</strong> will display the Retail (customer) and Wholesale (cleaner payout) prices side-by-side.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="bg-neutral-905 border border-neutral-800 hover:border-neutral-700/80 p-6 rounded-2xl transition-all flex items-start space-x-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center font-bold text-indigo-400 shrink-0">3</div>
+                    <div className="space-y-1">
+                      <h5 className="font-semibold text-neutral-100 text-sm">Book & Auto-Dispatch</h5>
+                      <p className="text-xs text-neutral-400 leading-relaxed">
+                        Fill out the customer&apos;s address, appointment date/time, select the recurring frequency, and click <strong>Confirm Booking & Dispatch</strong>. This triggers the backend dispatch engine, and the FSM state machine transitions to `BOOKING_CONFIRMED` and `DISPATCH_BROADCAST`. The system will automatically detect the customer&apos;s city and assign it to a regional zone (West, North, East, or Central GTA).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 p-6 rounded-2xl transition-all flex items-start space-x-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center font-bold text-indigo-400 shrink-0">4</div>
+                    <div className="space-y-1">
+                      <h5 className="font-semibold text-neutral-100 text-sm">Observe & Simulate Cleaner Claims</h5>
+                      <p className="text-xs text-neutral-400 leading-relaxed">
+                        Go to the <span className="text-indigo-400 font-medium">Dispatch & Reviews</span> tab. You will see a live dispatch queue showing the active FSM state (`AWAITING_RESPONSE`). Under &quot;FSM Testing Actions&quot;, you can click <strong>Simulate Cleaner Claim</strong> to assign a regional cleaner (e.g. Alice Green) who replied YES via SMS, or click <strong>Simulate 15m Timeout</strong> to trigger the automatic regional rebroadcast loop (caps at 3 attempts before alerting the operator).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 5 */}
+                  <div className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 p-6 rounded-2xl transition-all flex items-start space-x-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center font-bold text-indigo-400 shrink-0">5</div>
+                    <div className="space-y-1">
+                      <h5 className="font-semibold text-neutral-100 text-sm">Job Completion & Automated Reviews</h5>
+                      <p className="text-xs text-neutral-400 leading-relaxed">
+                        Under &quot;Review Request Simulator Controls&quot; on the Dispatch page, click <strong>Trigger Review SMS (Coached)</strong>. In a live system, this runs automatically 30 minutes after a job is marked completed in the database. The system sends a coached SMS that coaches the client to leave a 5-star Google review and naturally mention the target keyword phrase: <code>[City] house cleaning</code> (e.g., *Oakville house cleaning*).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* DETAILED FEATURE REFERENCE */}
+              <div className="space-y-6">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-450 flex items-center space-x-2">
+                  <span>Functional Modules Reference</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-555"></span>
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-2xl space-y-2">
+                    <div className="flex items-center space-x-2 text-indigo-400">
+                      <Radar size={16} />
+                      <h5 className="font-bold text-neutral-200 text-sm">Competitor Radar (Market Intel)</h5>
+                    </div>
+                    <p className="text-xs text-neutral-400 leading-relaxed">
+                      Scans the organic Google Maps top 3 results for a GTA city. Flags the suburb as a **GO** if at least 2 of the top 3 competitors have fewer than 100 reviews (indicating a winnable market), and **NO-GO** if it is saturated.
+                    </p>
+                  </div>
+
+                  <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-2xl space-y-2">
+                    <div className="flex items-center space-x-2 text-indigo-400">
+                      <Store size={16} />
+                      <h5 className="font-bold text-neutral-200 text-sm">GBP Sync & AI Post Writer</h5>
+                    </div>
+                    <p className="text-xs text-neutral-400 leading-relaxed">
+                      Automatically syncs active exact-match Google Business Profiles. The integrated GPT-4o copywriter creates weekly updates constrained to under 750 characters while embedding the key SEO city phrases exactly 2-3 times.
+                    </p>
+                  </div>
+
+                  <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-2xl space-y-2">
+                    <div className="flex items-center space-x-2 text-indigo-400">
+                      <PhoneCall size={16} />
+                      <h5 className="font-bold text-neutral-200 text-sm">Split-Panel Softphone Scripts</h5>
+                    </div>
+                    <p className="text-xs text-neutral-400 leading-relaxed">
+                      Ensures high call conversion by placing a scrollable, step-by-step phone script right in front of the operator&apos;s eyes during calls, matching quote calculations, and regional selectors instantly.
+                    </p>
+                  </div>
+
+                  <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-2xl space-y-2">
+                    <div className="flex items-center space-x-2 text-indigo-400">
+                      <MessageSquare size={16} />
+                      <h5 className="font-bold text-neutral-200 text-sm">Dispatch State Machine & Reviews</h5>
+                    </div>
+                    <p className="text-xs text-neutral-400 leading-relaxed">
+                      Coordinates SMS broadcasts to regional contractors, locks dispatches to the correct GTA region (preventing cross-region dispatch errors), maps claim feedback, and launches coached review blitzes to close the review gaps.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+
         </div>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
