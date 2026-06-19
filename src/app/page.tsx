@@ -559,9 +559,9 @@ export default function Dashboard() {
           <div className="bg-neutral-950/60 rounded-xl p-3 border border-neutral-800/80">
             <div className="flex items-center space-x-2 text-xs text-emerald-400 font-semibold mb-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Operator Connected</span>
+              <span>Console Connected</span>
             </div>
-            <p className="text-[10px] text-neutral-400">Twilio softphone ready for inbound cleaning requests.</p>
+            <p className="text-[10px] text-neutral-400">Manual call scripts and pricing calculators active.</p>
           </div>
         </div>
       </aside>
@@ -1362,7 +1362,7 @@ export default function Dashboard() {
                     <div>
                       <h3 className="font-semibold text-base text-neutral-100 flex items-center space-x-2">
                         <PhoneCall size={16} className="text-indigo-400 animate-pulse" />
-                        <span>Twilio Web Softphone</span>
+                        <span>Manual Call & Script Console</span>
                       </h3>
                       <p className="text-[10px] text-neutral-400">GTA Dispatch Operator Center</p>
                     </div>
@@ -1778,16 +1778,33 @@ export default function Dashboard() {
                   </div>
                   <h3 className="text-xl font-bold text-neutral-100">THE CLEANER 9,000 Playbook</h3>
                 </div>
-                <p className="text-sm text-neutral-355 leading-relaxed">
-                  Welcome to the official interactive operational cockpit. This guide will walk you through the GTA house cleaning automation strategy. By combining Google Places intelligence, GPT-4o copy optimization, simulated Twilio softphone scripting, and an automated SMS dispatch state machine, this system runs your entire dispatch desk in one dashboard.
+                <p className="text-sm text-neutral-300 leading-relaxed">
+                  Welcome to the official interactive operational cockpit. This guide walks you through the GTA house cleaning automation strategy. This system is designed for a **wholesale-to-retail arbitrage business model**, coordinating a regional contractor network to service customers while the operator manages the desk manually.
                 </p>
+              </div>
+
+              {/* ARBITRAGE MODEL EXPLANATION */}
+              <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl space-y-4">
+                <div className="flex items-center space-x-2 text-indigo-400">
+                  <DollarSign size={20} />
+                  <h4 className="font-bold text-neutral-100 text-sm">Wholesale-to-Retail Arbitrage & Bidding Model</h4>
+                </div>
+                <p className="text-xs text-neutral-400 leading-relaxed">
+                  The core business model revolves around <strong>coordinating contracts</strong> rather than performing manual labor. The operator acts as the contract broker:
+                </p>
+                <ul className="list-disc list-inside text-xs text-neutral-400 space-y-1 pl-2">
+                  <li><strong>Retail Booking:</strong> The customer calls your business. You quote them the retail price based on the pricing matrix.</li>
+                  <li><strong>Wholesale Dispatch:</strong> The system automatically calculates the wholesale price (what we pay the cleaner) and broadcasts it to regional cleaners in the target GTA region via Twilio SMS.</li>
+                  <li><strong>Contract Bidding:</strong> The job details are broadcast. The first cleaner in that region to reply <code className="text-indigo-400">YES</code> automatically secures the contract, and the customer is notified.</li>
+                  <li><strong>Arbitrage Profit:</strong> You pocket the difference between the retail and wholesale prices (e.g. on a 3-bed clean: $250 retail - $155 wholesale = $95 net profit) simply for brokering the deal.</li>
+                </ul>
               </div>
 
               {/* CORE JOURNEY STAGES */}
               <div className="space-y-6">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-450 flex items-center space-x-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 flex items-center space-x-2">
                   <span>Step-by-Step Operator Journey</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-550"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
                 </h4>
 
                 <div className="grid grid-cols-1 gap-4">
@@ -1795,9 +1812,9 @@ export default function Dashboard() {
                   <div className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 p-6 rounded-2xl transition-all flex items-start space-x-4">
                     <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center font-bold text-indigo-400 shrink-0">1</div>
                     <div className="space-y-1">
-                      <h5 className="font-semibold text-neutral-100 text-sm">Simulate an Inbound Call</h5>
+                      <h5 className="font-semibold text-neutral-100 text-sm">Receive a Manual Call</h5>
                       <p className="text-xs text-neutral-400 leading-relaxed">
-                        Go to the <span className="text-indigo-400 font-medium">Mission Control</span> tab. Scroll down to the <strong>Inbound Call Simulators</strong> box on the left panel, and click on any customer card (e.g., Sarah Jenkins). The Twilio softphone widget will transition to an <strong>Inbound Ringing</strong> state.
+                        When a customer calls your business line, navigate to the <span className="text-indigo-400 font-medium">Mission Control</span> tab. If they are a returning customer, you can click their profile under the <strong>Call Simulators / Quick Logs</strong> to pre-populate details.
                       </p>
                     </div>
                   </div>
@@ -1806,20 +1823,20 @@ export default function Dashboard() {
                   <div className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 p-6 rounded-2xl transition-all flex items-start space-x-4">
                     <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center font-bold text-indigo-400 shrink-0">2</div>
                     <div className="space-y-1">
-                      <h5 className="font-semibold text-neutral-100 text-sm">Follow Script & Calculate Price</h5>
+                      <h5 className="font-semibold text-neutral-100 text-sm">Follow Call Script & Quote</h5>
                       <p className="text-xs text-neutral-400 leading-relaxed">
-                        Once ringing, click <strong>Accept Call</strong> or look at the active call details. Read the step-by-step phone scripts on the left panel to guide the conversation. Meanwhile, toggle the number of bedrooms, bathrooms, and whether a deep clean is required on the right panel. The <strong>Instant Quote Calculator</strong> will display the Retail (customer) and Wholesale (cleaner payout) prices side-by-side.
+                        Read the step-by-step phone scripts on the left panel to lead the conversation. Toggle the bedroom/bathroom counters and add-ons on the right panel. The <strong>Instant Quote Calculator</strong> will display the Retail and Wholesale prices side-by-side. Quote the customer the retail price.
                       </p>
                     </div>
                   </div>
 
                   {/* Step 3 */}
-                  <div className="bg-neutral-905 border border-neutral-800 hover:border-neutral-700/80 p-6 rounded-2xl transition-all flex items-start space-x-4">
+                  <div className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 p-6 rounded-2xl transition-all flex items-start space-x-4">
                     <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center font-bold text-indigo-400 shrink-0">3</div>
                     <div className="space-y-1">
-                      <h5 className="font-semibold text-neutral-100 text-sm">Book & Auto-Dispatch</h5>
+                      <h5 className="font-semibold text-neutral-100 text-sm">Book and Broadcast Job</h5>
                       <p className="text-xs text-neutral-400 leading-relaxed">
-                        Fill out the customer&apos;s address, appointment date/time, select the recurring frequency, and click <strong>Confirm Booking & Dispatch</strong>. This triggers the backend dispatch engine, and the FSM state machine transitions to `BOOKING_CONFIRMED` and `DISPATCH_BROADCAST`. The system will automatically detect the customer&apos;s city and assign it to a regional zone (West, North, East, or Central GTA).
+                        Input the customer&apos;s address, date/time, select the GTA region (West, North, East, or Central), and click <strong>Confirm Booking & Dispatch</strong>. This writes the job to Supabase and fires the dispatch state machine.
                       </p>
                     </div>
                   </div>
@@ -1828,9 +1845,9 @@ export default function Dashboard() {
                   <div className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 p-6 rounded-2xl transition-all flex items-start space-x-4">
                     <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center font-bold text-indigo-400 shrink-0">4</div>
                     <div className="space-y-1">
-                      <h5 className="font-semibold text-neutral-100 text-sm">Observe & Simulate Cleaner Claims</h5>
+                      <h5 className="font-semibold text-neutral-100 text-sm">Cleaners Bid & Claim via SMS</h5>
                       <p className="text-xs text-neutral-400 leading-relaxed">
-                        Go to the <span className="text-indigo-400 font-medium">Dispatch & Reviews</span> tab. You will see a live dispatch queue showing the active FSM state (`AWAITING_RESPONSE`). Under &quot;FSM Testing Actions&quot;, you can click <strong>Simulate Cleaner Claim</strong> to assign a regional cleaner (e.g. Alice Green) who replied YES via SMS, or click <strong>Simulate 15m Timeout</strong> to trigger the automatic regional rebroadcast loop (caps at 3 attempts before alerting the operator).
+                        The dispatch agent automatically broadcasts the job details and wholesale payout to all active cleaners in the matching region. The first cleaner to text back <strong><code>YES</code></strong> is automatically assigned. The system updates the job status, alerts the customer, and stops the broadcast.
                       </p>
                     </div>
                   </div>
@@ -1839,9 +1856,9 @@ export default function Dashboard() {
                   <div className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 p-6 rounded-2xl transition-all flex items-start space-x-4">
                     <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center font-bold text-indigo-400 shrink-0">5</div>
                     <div className="space-y-1">
-                      <h5 className="font-semibold text-neutral-100 text-sm">Job Completion & Automated Reviews</h5>
+                      <h5 className="font-semibold text-neutral-100 text-sm">Job Completion & Review Blitz</h5>
                       <p className="text-xs text-neutral-400 leading-relaxed">
-                        Under &quot;Review Request Simulator Controls&quot; on the Dispatch page, click <strong>Trigger Review SMS (Coached)</strong>. In a live system, this runs automatically 30 minutes after a job is marked completed in the database. The system sends a coached SMS that coaches the client to leave a 5-star Google review and naturally mention the target keyword phrase: <code>[City] house cleaning</code> (e.g., *Oakville house cleaning*).
+                        Once the job is completed, the background sweeper waits 30 minutes to avoid pestering the client, then automatically sends a coached review request via SMS. This request prompts the client to write a Google review and explicitly mention the city + keyword (e.g. `Oakville house cleaning`) to improve your local GBP ranking.
                       </p>
                     </div>
                   </div>
@@ -1850,49 +1867,49 @@ export default function Dashboard() {
 
               {/* DETAILED FEATURE REFERENCE */}
               <div className="space-y-6">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-450 flex items-center space-x-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 flex items-center space-x-2">
                   <span>Functional Modules Reference</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-555"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-550"></span>
                 </h4>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-2xl space-y-2">
                     <div className="flex items-center space-x-2 text-indigo-400">
                       <Radar size={16} />
-                      <h5 className="font-bold text-neutral-200 text-sm">Competitor Radar (Market Intel)</h5>
+                      <h5 className="font-bold text-neutral-200 text-sm">Market Intel & Competitor Radar</h5>
                     </div>
                     <p className="text-xs text-neutral-400 leading-relaxed">
-                      Scans the organic Google Maps top 3 results for a GTA city. Flags the suburb as a **GO** if at least 2 of the top 3 competitors have fewer than 100 reviews (indicating a winnable market), and **NO-GO** if it is saturated.
+                      Enter a GTA suburb and service keyword. The system uses the Google Places API to search the top 3 ranking businesses in that city. It applies the <strong>Velch Threshold Rule</strong>: it flags the city as a <strong>GO (Green)</strong> if at least 2 of the top 3 competitors have fewer than 100 reviews (indicating a winnable market), and <strong>NO-GO (Red)</strong> if they are saturated.
                     </p>
                   </div>
 
                   <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-2xl space-y-2">
                     <div className="flex items-center space-x-2 text-indigo-400">
                       <Store size={16} />
-                      <h5 className="font-bold text-neutral-200 text-sm">GBP Sync & AI Post Writer</h5>
+                      <h5 className="font-bold text-neutral-200 text-sm">GBP Manager & AI Post Writer</h5>
                     </div>
                     <p className="text-xs text-neutral-400 leading-relaxed">
-                      Automatically syncs active exact-match Google Business Profiles. The integrated GPT-4o copywriter creates weekly updates constrained to under 750 characters while embedding the key SEO city phrases exactly 2-3 times.
+                      Manages your exact-match Google Business Profiles. Clicking &quot;Generate Weekly Post&quot; calls OpenAI GPT-4o to write localized updates under 750 characters. The model is constrained to naturally repeat the keyword (e.g., <code>[City] house cleaning</code>) 2-3 times to boost local search relevance.
                     </p>
                   </div>
 
                   <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-2xl space-y-2">
                     <div className="flex items-center space-x-2 text-indigo-400">
                       <PhoneCall size={16} />
-                      <h5 className="font-bold text-neutral-200 text-sm">Split-Panel Softphone Scripts</h5>
+                      <h5 className="font-bold text-neutral-200 text-sm">Mission Control & Pricing Calculator</h5>
                     </div>
                     <p className="text-xs text-neutral-400 leading-relaxed">
-                      Ensures high call conversion by placing a scrollable, step-by-step phone script right in front of the operator&apos;s eyes during calls, matching quote calculations, and regional selectors instantly.
+                      Handles manual calls. Features a scrollable scripts panel (Introduction, Pricing, Handling Objections, Scheduling) and the Instant Quote Calculator. The calculator enforces the wholesale-to-retail pricing matrix (1 bed: $140/85, 2 bed: $190/115, 3 bed: $250/155, 4 bed: $310/195, deep clean: +$70/35), letting you see your net arbitrage profit immediately.
                     </p>
                   </div>
 
                   <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-2xl space-y-2">
                     <div className="flex items-center space-x-2 text-indigo-400">
                       <MessageSquare size={16} />
-                      <h5 className="font-bold text-neutral-200 text-sm">Dispatch State Machine & Reviews</h5>
+                      <h5 className="font-bold text-neutral-200 text-sm">Dispatch Engine & Review Blitz</h5>
                     </div>
                     <p className="text-xs text-neutral-400 leading-relaxed">
-                      Coordinates SMS broadcasts to regional contractors, locks dispatches to the correct GTA region (preventing cross-region dispatch errors), maps claim feedback, and launches coached review blitzes to close the review gaps.
+                      Coordinates bookings with regional contractors (West, North, East, Central) to prevent cross-region dispatch errors. Manages the FSM state machine: sends SMS broadcasts, waits for incoming claims, handles 15-minute rebroadcast timeouts (up to 3 attempts), and automates keyword-coached review requests.
                     </p>
                   </div>
                 </div>
