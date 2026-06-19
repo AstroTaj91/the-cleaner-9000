@@ -1779,7 +1779,7 @@ export default function Dashboard() {
                   <h3 className="text-xl font-bold text-neutral-100">THE CLEANER 9,000 Playbook</h3>
                 </div>
                 <p className="text-sm text-neutral-300 leading-relaxed">
-                  Welcome to the official interactive operational cockpit. This guide walks you through the GTA house cleaning automation strategy. This system is designed for a **wholesale-to-retail arbitrage business model**, coordinating a regional contractor network to service customers while the operator manages the desk manually.
+                  Welcome to the official interactive operational cockpit. This guide walks you through the GTA house cleaning automation strategy. This system is designed for a <strong>wholesale-to-retail arbitrage business model</strong>, coordinating a regional contractor network to service customers while the operator manages the desk manually.
                 </p>
               </div>
 
@@ -1787,17 +1787,34 @@ export default function Dashboard() {
               <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl space-y-4">
                 <div className="flex items-center space-x-2 text-indigo-400">
                   <DollarSign size={20} />
-                  <h4 className="font-bold text-neutral-100 text-sm">Wholesale-to-Retail Arbitrage & Bidding Model</h4>
+                  <h4 className="font-bold text-neutral-100 text-sm">Wholesale-to-Retail Cleaning Arbitrage &amp; Bidding Model</h4>
                 </div>
                 <p className="text-xs text-neutral-400 leading-relaxed">
-                  The core business model revolves around <strong>coordinating contracts</strong> rather than performing manual labor. The operator acts as the contract broker:
+                  This system is built for a <strong>brokerage model</strong> where the operator does not perform any physical cleaning. Instead, you broker contracts between homeowners and independent regional cleaning contractors:
                 </p>
-                <ul className="list-disc list-inside text-xs text-neutral-400 space-y-1 pl-2">
-                  <li><strong>Retail Booking:</strong> The customer calls your business. You quote them the retail price based on the pricing matrix.</li>
-                  <li><strong>Wholesale Dispatch:</strong> The system automatically calculates the wholesale price (what we pay the cleaner) and broadcasts it to regional cleaners in the target GTA region via Twilio SMS.</li>
-                  <li><strong>Contract Bidding:</strong> The job details are broadcast. The first cleaner in that region to reply <code className="text-indigo-400">YES</code> automatically secures the contract, and the customer is notified.</li>
-                  <li><strong>Arbitrage Profit:</strong> You pocket the difference between the retail and wholesale prices (e.g. on a 3-bed clean: $250 retail - $155 wholesale = $95 net profit) simply for brokering the deal.</li>
-                </ul>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800">
+                    <h5 className="font-semibold text-neutral-200 mb-2 flex items-center space-x-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                      <span>1. The Arbitrage (Pricing Spread)</span>
+                    </h5>
+                    <p className="text-neutral-400 leading-relaxed">
+                      You secure a client at a high <strong>Retail Price</strong> (e.g., $250 for a 3-bed clean) and contract the work out to a verified cleaner in our network at a lower <strong>Wholesale Price</strong> (e.g., $155). You pocket the difference ($95) as pure arbitrage profit for brokering the deal.
+                    </p>
+                  </div>
+                  <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800">
+                    <h5 className="font-semibold text-neutral-200 mb-2 flex items-center space-x-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                      <span>2. The Bid (First-Reply Wins)</span>
+                    </h5>
+                    <p className="text-neutral-400 leading-relaxed">
+                      When a job is confirmed in Mission Control, the dispatch agent automatically broadcasts the job details and the wholesale payout to all active cleaners in the corresponding GTA region via SMS. The cleaners bid on the contract by replying <strong><code>YES</code></strong> via text. The first responder is assigned the job automatically.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-indigo-950/20 border border-indigo-900/30 p-4 rounded-xl text-xs text-neutral-400 leading-relaxed">
+                  <strong>The Operational Edge:</strong> By automating the dispatch state machine and the subsequent review loop in Supabase, you can run a multi-city cleaning brand with zero equipment, zero employee overhead, and zero manual cleaning labor.
+                </div>
               </div>
 
               {/* CORE JOURNEY STAGES */}
