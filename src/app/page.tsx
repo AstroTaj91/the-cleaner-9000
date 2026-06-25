@@ -72,6 +72,16 @@ interface GbpPostResponse {
   postContent: string;
 }
 
+interface ScrapedJob {
+  title: string;
+  pay: string;
+  location: string;
+  url: string;
+  posted: string;
+  description: string;
+  service_type: 'residential' | 'commercial' | 'construction';
+}
+
 interface ReviewRequest {
   id: string;
   job_id: string;
@@ -137,7 +147,7 @@ const calculateFrontendPrices = (beds: number, baths: number, isDeepClean: boole
 };
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<'home' | 'radar' | 'gbp' | 'reviews' | 'mission' | 'guide'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'radar' | 'gbp' | 'job-radar' | 'reviews' | 'mission' | 'guide'>('home');
 
   // Mission Control - Softphone States
   const [phoneStatus, setPhoneStatus] = useState<'idle' | 'ringing' | 'in-call'>('idle');
@@ -173,6 +183,13 @@ export default function Dashboard() {
   const [radarResult, setRadarResult] = useState<CompetitorRadarResponse | null>(null);
   const [radarLoading, setRadarLoading] = useState(false);
   const [radarError, setRadarError] = useState('');
+
+  // Job Radar States
+  const [scrapedJobs, setScrapedJobs] = useState<ScrapedJob[]>([]);
+  const [scraperLoading, setScraperLoading] = useState(false);
+  const [scraperCity, setScraperCity] = useState('Oakville');
+  const [scraperKeyword, setScraperKeyword] = useState('construction cleanup');
+  const [scraperError, setScraperError] = useState('');
 
   // GBP States
   const [gbpListings, setGbpListings] = useState<GbpListing[]>([]);
@@ -454,6 +471,77 @@ export default function Dashboard() {
     }
   };
 
+  const handleScanClassifieds = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setScraperLoading(true);
+    setScraperError('');
+    setScrapedJobs([]);
+
+    try {
+      const res = await fetch('/api/job-scraper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city: scraperCity, keyword: scraperKeyword })
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to scan classified listings.');
+      }
+
+      const data = await res.json();
+      setScrapedJobs(data.jobs || []);
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'An error occurred during scanning.';
+      setScraperError(errMsg);
+    } finally {
+      setScraperLoading(false);
+    }
+  };
+
+  const handleImportJob = (job: ScrapedJob) => {
+    // Parse city name
+    const cityPart = job.location.split(',')[0].trim();
+    
+    // Parse beds/baths from title/description
+    let beds = 2;
+    let baths = 1;
+    let isDeep = false;
+
+    const fullText = (job.title + ' ' + job.description).toLowerCase();
+    
+    const bedMatch = fullText.match(/(\d+)\s*(?:bed|bd)/);
+    if (bedMatch) beds = Math.max(1, Math.min(6, parseInt(bedMatch[1])));
+
+    const bathMatch = fullText.match(/(\d+)\s*(?:bath|ba)/);
+    if (bathMatch) baths = Math.max(1, Math.min(4, parseInt(bathMatch[1])));
+
+    if (fullText.includes('deep') || fullText.includes('sparkle') || fullText.includes('final') || fullText.includes('renov') || fullText.includes('post-construction')) {
+      isDeep = true;
+    }
+
+    setCalcBeds(beds);
+    setCalcBaths(baths);
+    setCalcIsDeep(isDeep);
+
+    setBookingName(`Lead: ${job.title.length > 35 ? job.title.slice(0, 35) + '...' : job.title}`);
+    setBookingPhone('+19055550199');
+    setBookingAddress(`Source: ${job.url}`);
+    setBookingCity(cityPart);
+
+    // Set appointment to tomorrow at 9:00 AM
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    const offset = tomorrow.getTimezoneOffset();
+    const localTomorrow = new Date(tomorrow.getTime() - (offset * 60 * 1000));
+    setBookingDate(localTomorrow.toISOString().slice(0, 16));
+
+    // Clear previous alerts and switch tab
+    setBookingError('');
+    setBookingSuccess('Classified gig details successfully imported! Review price and confirm.');
+    setActiveTab('mission');
+  };
+
   const handleGenerateWeeklyPost = async (listing: GbpListing) => {
     const listingKey = listing.city;
     const serviceType = postServiceTypes[listingKey] || 'residential';
@@ -535,6 +623,18 @@ export default function Dashboard() {
             </button>
 
             <button 
+              onClick={() => setActiveTab('job-radar')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeTab === 'job-radar' 
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                  : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
+              }`}
+            >
+              <Search size={18} />
+              <span>Job Radar (Craigslist)</span>
+            </button>
+
+            <button 
               onClick={() => setActiveTab('mission')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === 'mission' 
@@ -555,7 +655,7 @@ export default function Dashboard() {
               }`}
             >
               <MessageSquare size={18} />
-              <span>Dispatch & Reviews</span>
+              <span>Dispatch Board</span>
             </button>
 
             <button 
@@ -590,7 +690,8 @@ export default function Dashboard() {
             {activeTab === 'home' && "Operational Overview"}
             {activeTab === 'radar' && "Competitor Radar"}
             {activeTab === 'gbp' && "Google Business Profile Sync"}
-            {activeTab === 'reviews' && "Review Blitz & SMS Logs"}
+            {activeTab === 'job-radar' && "Classifieds Job Radar (Craigslist)"}
+            {activeTab === 'reviews' && "Live Cleaner Dispatch Board"}
             {activeTab === 'mission' && "Mission Control (Call Console)"}
             {activeTab === 'guide' && "How-To Guide & Operational Flow"}
           </h2>
@@ -979,6 +1080,141 @@ export default function Dashboard() {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ==================== TAB: JOB RADAR ==================== */}
+          {activeTab === 'job-radar' && (
+            <div className="space-y-8 animate-fadeIn">
+              {/* CONTROL BAR */}
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
+                <form onSubmit={handleScanClassifieds} className="flex flex-col md:flex-row md:items-end gap-4">
+                  <div className="flex-1 space-y-2">
+                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Target City / Suburb</label>
+                    <div className="relative">
+                      <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
+                      <input 
+                        type="text" 
+                        value={scraperCity} 
+                        onChange={(e) => setScraperCity(e.target.value)}
+                        placeholder="e.g. Oakville, Ancaster, Mississauga"
+                        className="w-full bg-neutral-950 border border-neutral-800 focus:border-indigo-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-neutral-200 focus:outline-none transition-all"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-2">
+                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Search Keyword</label>
+                    <div className="relative">
+                      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
+                      <input 
+                        type="text" 
+                        value={scraperKeyword} 
+                        onChange={(e) => setScraperKeyword(e.target.value)}
+                        placeholder="e.g. construction cleanup, office cleaning, house cleaning"
+                        className="w-full bg-neutral-950 border border-neutral-800 focus:border-indigo-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-neutral-200 focus:outline-none transition-all"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={scraperLoading}
+                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-sm font-semibold rounded-xl text-white shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center space-x-2"
+                  >
+                    <RefreshCw size={16} className={scraperLoading ? 'animate-spin' : ''} />
+                    <span>{scraperLoading ? 'Scraping Classifieds...' : 'Scan Classifieds'}</span>
+                  </button>
+                </form>
+
+                {scraperError && (
+                  <div className="mt-4 p-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-xs flex items-center space-x-2">
+                    <XCircle size={14} />
+                    <span>{scraperError}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* SCRAPED JOBS LIST */}
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
+                <div className="p-6 border-b border-neutral-800">
+                  <h3 className="font-semibold text-base text-neutral-100">Scraped Cleaning Gigs & Contracts</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">Scraped classified postings matching your service keywords. Review details and import to book.</p>
+                </div>
+
+                <div className="p-6">
+                  {scrapedJobs.length === 0 ? (
+                    <div className="py-12 text-center">
+                      <Search className="mx-auto text-neutral-600 mb-3" size={36} />
+                      <h4 className="text-sm font-semibold text-neutral-300">No scraped results found</h4>
+                      <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">Enter a city and keyword above, then click Scan to pull cleaning contracts from Craigslist.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-6">
+                      {scrapedJobs.map((job, idx) => (
+                        <div key={idx} className="bg-neutral-950/60 border border-neutral-800/80 rounded-xl p-5 space-y-4 hover:border-neutral-700 transition-all">
+                          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                            <div className="space-y-1">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                                job.service_type === 'construction'
+                                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                  : job.service_type === 'commercial'
+                                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                  : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                              }`}>
+                                {job.service_type.charAt(0).toUpperCase() + job.service_type.slice(1)}
+                              </span>
+                              <h4 className="font-bold text-neutral-150 text-base leading-snug">{job.title}</h4>
+                              <div className="flex items-center space-x-3 text-xs text-neutral-400 pt-1">
+                                <span className="flex items-center space-x-1">
+                                  <MapPin size={12} className="text-neutral-500" />
+                                  <span>{job.location}</span>
+                                </span>
+                                <span>•</span>
+                                <span className="flex items-center space-x-1">
+                                  <Clock size={12} className="text-neutral-500" />
+                                  <span>{job.posted}</span>
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3 self-start md:self-auto">
+                              <span className="text-sm font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-3 py-1.5 rounded-lg">
+                                {job.pay}
+                              </span>
+                              <a 
+                                href={job.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="p-2 bg-neutral-800 hover:bg-neutral-750 text-neutral-300 rounded-lg border border-neutral-700 transition-all"
+                                title="Open Original Ad"
+                              >
+                                <ExternalLink size={14} />
+                              </a>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-neutral-400 leading-relaxed bg-neutral-900/40 p-4.5 rounded-xl border border-neutral-900">
+                            {job.description}
+                          </p>
+
+                          <div className="flex justify-end pt-1">
+                            <button
+                              onClick={() => handleImportJob(job)}
+                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold rounded-lg text-white shadow-md shadow-indigo-600/10 transition-all flex items-center space-x-1.5"
+                            >
+                              <Plus size={14} />
+                              <span>Import to Booking Console</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
