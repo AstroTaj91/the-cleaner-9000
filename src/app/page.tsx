@@ -179,6 +179,7 @@ export default function Dashboard() {
   const [gbpSyncing, setGbpSyncing] = useState(false);
   const [activeGbpPosts, setActiveGbpPosts] = useState<Record<string, GbpPostResponse>>({});
   const [gbpPostingIds, setGbpPostingIds] = useState<Record<string, boolean>>({});
+  const [postServiceTypes, setPostServiceTypes] = useState<Record<string, string>>({});
 
   // Review Blitz States
   const [reviewLogs, setReviewLogs] = useState<ReviewRequest[]>([]);
@@ -455,12 +456,17 @@ export default function Dashboard() {
 
   const handleGenerateWeeklyPost = async (listing: GbpListing) => {
     const listingKey = listing.city;
+    const serviceType = postServiceTypes[listingKey] || 'residential';
     setGbpPostingIds(prev => ({ ...prev, [listingKey]: true }));
     try {
       const res = await fetch('/api/gbp-post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: listing.city, gbp_listing_id: listing.id })
+        body: JSON.stringify({ 
+          city: listing.city, 
+          gbp_listing_id: listing.id,
+          service_type: serviceType
+        })
       });
 
       if (!res.ok) throw new Error('Failed to generate GBP post.');
@@ -928,6 +934,16 @@ export default function Dashboard() {
                                   <span>Review Link</span>
                                   <ExternalLink size={12} />
                                 </a>
+
+                                <select
+                                  value={postServiceTypes[listing.city] || 'residential'}
+                                  onChange={(e) => setPostServiceTypes(prev => ({ ...prev, [listing.city]: e.target.value }))}
+                                  className="bg-neutral-800 border border-neutral-700 rounded-lg px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-indigo-500 transition-all"
+                                >
+                                  <option value="residential">Residential (Maids)</option>
+                                  <option value="commercial">Commercial (Buildings)</option>
+                                  <option value="construction">Post-Construction (Sites)</option>
+                                </select>
 
                                 <button 
                                   onClick={() => handleGenerateWeeklyPost(listing)}
