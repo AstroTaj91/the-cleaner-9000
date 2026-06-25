@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase';
 
 interface Competitor {
   name: string;
@@ -110,6 +111,41 @@ export async function POST(request: Request) {
     const weakCompetitors = competitors.filter(c => c.reviewCount < 100).length;
     const isWinnable = weakCompetitors >= 2;
     const status = isWinnable ? 'GO' : 'NO-GO';
+
+    // Write competitors to Supabase database if connected
+    if (supabaseAdmin) {
+      try {
+        // Find matching GBP listing based on city name (case-insensitive search)
+        const { data: gbpListing } = await supabaseAdmin
+          .from('gbp_listings')
+          .select('id')
+          .ilike('city', suburb)
+          .maybeSingle();
+
+        if (gbpListing) {
+          // Delete existing competitors for this listing
+          await supabaseAdmin
+            .from('competitors')
+            .delete()
+            .eq('gbp_listing_id', gbpListing.id);
+
+          // Insert new competitors
+          await supabaseAdmin
+            .from('competitors')
+            .insert(
+              competitors.map(c => ({
+                gbp_listing_id: gbpListing.id,
+                name: c.name,
+                review_count: c.reviewCount,
+                rating: c.rating,
+                rank: c.rank
+              }))
+            );
+        }
+      } catch (dbErr) {
+        console.error('Failed to write competitors to database:', dbErr);
+      }
+    }
 
     return NextResponse.json({
       suburb,

@@ -52,6 +52,15 @@ interface GbpListing {
   review_count: number;
   google_review_link: string;
   created_at?: string;
+  competitors?: {
+    id: string;
+    gbp_listing_id: string;
+    name: string;
+    review_count: number;
+    rating: number;
+    rank: number;
+    scanned_at: string;
+  }[];
 }
 
 interface GbpPostResponse {
@@ -191,7 +200,7 @@ export default function Dashboard() {
 
   // On page load, fetch synced GBP listings, review logs, and active dispatches
   useEffect(() => {
-    fetchGbpListings();
+    fetchGbpListings(false, 'GET');
     fetchReviewLogs();
     fetchDispatches();
   }, []);
@@ -358,10 +367,10 @@ export default function Dashboard() {
     setBookingDate(localTomorrow.toISOString().slice(0, 16));
   };
 
-  const fetchGbpListings = async (showSyncIndicator = false) => {
+  const fetchGbpListings = async (showSyncIndicator = false, method = 'GET') => {
     if (showSyncIndicator) setGbpSyncing(true);
     try {
-      const res = await fetch('/api/gbp-sync', { method: 'POST' });
+      const res = await fetch('/api/gbp-sync', { method });
       if (res.ok) {
         const data = await res.json();
         setGbpListings(data.listings || []);
@@ -434,6 +443,8 @@ export default function Dashboard() {
 
       const data = await res.json();
       setRadarResult(data);
+      // Fetch updated listings to refresh the review gap benchmarks
+      fetchGbpListings(false, 'GET');
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'An error occurred.';
       setRadarError(errMsg);
@@ -630,7 +641,7 @@ export default function Dashboard() {
                     <p className="text-xs text-neutral-400 mt-0.5">Comparing synced GBP counts against top competitor benchmarks.</p>
                   </div>
                   <button 
-                    onClick={() => fetchGbpListings(true)} 
+                    onClick={() => fetchGbpListings(true, 'GET')} 
                     disabled={gbpSyncing}
                     className="flex items-center space-x-2 px-3 py-1.5 bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50 text-xs font-medium rounded-lg text-neutral-200 transition-all"
                   >
@@ -645,7 +656,7 @@ export default function Dashboard() {
                       <Store className="mx-auto text-neutral-600 mb-3" size={32} />
                       <p className="text-sm text-neutral-400 mb-4">No listings synced yet.</p>
                       <button 
-                        onClick={() => fetchGbpListings(true)} 
+                        onClick={() => fetchGbpListings(true, 'POST')} 
                         className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-500 transition-all"
                       >
                         Sync Profiles
@@ -664,7 +675,7 @@ export default function Dashboard() {
                       </thead>
                       <tbody className="divide-y divide-neutral-850">
                         {gbpListings.map((listing) => {
-                          // Simple benchmark calculations for mockup purposes
+                          // Default benchmarks if no competitors scanned yet
                           const benchmarks: Record<string, number> = {
                             Mississauga: 220,
                             Oakville: 310,
@@ -672,7 +683,10 @@ export default function Dashboard() {
                             Vaughan: 110,
                             Scarborough: 120
                           };
-                          const maxCompetitorReviews = benchmarks[listing.city] || 150;
+                          const dbMax = listing.competitors && listing.competitors.length > 0 
+                            ? Math.max(...listing.competitors.map((c) => c.review_count)) 
+                            : null;
+                          const maxCompetitorReviews = dbMax !== null ? dbMax : (benchmarks[listing.city] || 150);
                           const gap = maxCompetitorReviews - listing.review_count;
 
                           return (
@@ -862,7 +876,7 @@ export default function Dashboard() {
                     <p className="text-xs text-neutral-400 mt-0.5">Profiles manually created with exact-match naming strategies and synced to THE CLEANER 9,000.</p>
                   </div>
                   <button 
-                    onClick={() => fetchGbpListings(true)}
+                    onClick={() => fetchGbpListings(true, 'POST')}
                     disabled={gbpSyncing}
                     className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-semibold rounded-xl text-white shadow-lg shadow-indigo-600/20 transition-all"
                   >
@@ -1119,7 +1133,10 @@ export default function Dashboard() {
                     Vaughan: 110,
                     Scarborough: 120
                   };
-                  const competitorBenchmark = benchmarks[listing.city] || 150;
+                  const dbMax = listing.competitors && listing.competitors.length > 0 
+                    ? Math.max(...listing.competitors.map((c) => c.review_count)) 
+                    : null;
+                  const competitorBenchmark = dbMax !== null ? dbMax : (benchmarks[listing.city] || 150);
                   const gap = competitorBenchmark - listing.review_count;
                   
                   // Calculate progress percentage

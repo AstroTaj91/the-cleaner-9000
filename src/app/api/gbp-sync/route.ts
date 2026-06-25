@@ -35,10 +35,71 @@ const PROFILES_TO_SYNC = [
   }
 ];
 
+export async function GET() {
+  try {
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: true,
+        persisted: false,
+        count: PROFILES_TO_SYNC.length,
+        listings: PROFILES_TO_SYNC.map(p => ({ ...p, competitors: [] }))
+      });
+    }
+
+    // Fetch existing listings with competitors joined
+    const { data, error } = await supabaseAdmin
+      .from('gbp_listings')
+      .select('*, competitors(*)');
+
+    let listings = data;
+
+    if (error) {
+      throw error;
+    }
+
+    // Auto-seed if database is currently empty
+    if (!listings || listings.length === 0) {
+      console.info('[gbp-sync GET] Database empty. Auto-seeding default listings.');
+      const { data: seeded, error: seedError } = await supabaseAdmin
+        .from('gbp_listings')
+        .upsert(
+          PROFILES_TO_SYNC.map(p => ({
+            name: p.name,
+            city: p.city,
+            review_count: p.review_count,
+            google_review_link: p.google_review_link
+          })),
+          { onConflict: 'name' }
+        )
+        .select('*, competitors(*)');
+
+      if (seedError) {
+        throw new Error(`Auto-seeding failed: ${seedError.message}`);
+      }
+      listings = seeded;
+    }
+
+    return NextResponse.json({
+      success: true,
+      persisted: true,
+      count: listings?.length || 0,
+      listings: listings || []
+    });
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
+    console.error('Error in gbp-sync GET API:', error);
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST() {
   try {
     const isMockOnly = !supabaseAdmin;
-    let syncedListings = [...PROFILES_TO_SYNC];
+    let syncedListings = [...PROFILES_TO_SYNC].map(p => ({ ...p, competitors: [] }));
 
     if (supabaseAdmin) {
       // Upsert profiles into the database to persist them
@@ -53,29 +114,14 @@ export async function POST() {
           })),
           { onConflict: 'name' }
         )
-        .select();
+        .select('*, competitors(*)');
 
       if (error) {
         throw new Error(`Database upsert error: ${error.message}`);
       }
 
       if (data) {
-        interface GbpRow {
-          id: string;
-          name: string;
-          city: string;
-          review_count: number;
-          google_review_link: string;
-          created_at: string;
-        }
-        syncedListings = data.map((d: GbpRow) => ({
-          id: d.id,
-          name: d.name,
-          city: d.city,
-          review_count: d.review_count,
-          google_review_link: d.google_review_link,
-          created_at: d.created_at
-        }));
+        syncedListings = data;
       }
     }
 
@@ -88,7 +134,7 @@ export async function POST() {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-    console.error('Error in gbp-sync API:', error);
+    console.error('Error in gbp-sync POST API:', error);
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }
