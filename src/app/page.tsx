@@ -19,7 +19,6 @@ import {
   Search,
   MessageSquare,
   Clock,
-  Send,
   Phone,
   PhoneCall,
   PhoneOff,
@@ -80,17 +79,6 @@ interface ScrapedJob {
   posted: string;
   description: string;
   service_type: 'residential' | 'commercial' | 'construction';
-}
-
-interface ReviewRequest {
-  id: string;
-  job_id: string;
-  customer_name: string;
-  customer_phone: string;
-  city: string;
-  status: string;
-  sms_sent_at: string | null;
-  sms_body: string;
 }
 
 interface DispatchRun {
@@ -198,28 +186,14 @@ export default function Dashboard() {
   const [gbpPostingIds, setGbpPostingIds] = useState<Record<string, boolean>>({});
   const [postServiceTypes, setPostServiceTypes] = useState<Record<string, string>>({});
 
-  // Review Blitz States
-  const [reviewLogs, setReviewLogs] = useState<ReviewRequest[]>([]);
-  const [reviewLogsLoading, setReviewLogsLoading] = useState(false);
-  const [triggeringJobIds, setTriggeringJobIds] = useState<Record<string, 'pending' | 'sent' | 'failed' | ''>>({});
-
   // Stats (derived/mocked for display)
   const totalJobs = 148;
   const activeCleaners = 32;
   const totalRevenue = 32400;
 
-  // Mock completed jobs for UI review dispatch triggers
-  const completedJobs = [
-    { id: 'job_oak_101', customer: 'Sarah Jenkins', phone: '+19055550123', city: 'Oakville', service: '3 Bed/2 Bath Cleaning' },
-    { id: 'job_mis_102', customer: 'John Doe', phone: '+14165550456', city: 'Mississauga', service: '1 Bed/1 Bath Cleaning' },
-    { id: 'job_bra_103', customer: 'Rajesh Patel', phone: '+12895550789', city: 'Brampton', service: '2 Bed/1 Bath Deep Clean' },
-    { id: 'job_vau_104', customer: 'Emily Chen', phone: '+19055550111', city: 'Vaughan', service: '4 Bed/2 Bath Cleaning' }
-  ];
-
-  // On page load, fetch synced GBP listings, review logs, and active dispatches
+  // On page load, fetch synced GBP listings and active dispatches
   useEffect(() => {
     fetchGbpListings(false, 'GET');
-    fetchReviewLogs();
     fetchDispatches();
   }, []);
 
@@ -260,7 +234,6 @@ export default function Dashboard() {
       });
       if (res.ok) {
         fetchDispatches();
-        fetchReviewLogs();
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to simulate timeout.');
@@ -284,7 +257,6 @@ export default function Dashboard() {
       });
       if (res.ok) {
         fetchDispatches();
-        fetchReviewLogs();
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to simulate claim.');
@@ -400,47 +372,7 @@ export default function Dashboard() {
     }
   };
 
-  const fetchReviewLogs = async () => {
-    setReviewLogsLoading(true);
-    try {
-      const res = await fetch('/api/reviews/status');
-      if (res.ok) {
-        const data = await res.json();
-        setReviewLogs(data.requests || []);
-      }
-    } catch (err) {
-      console.error('Error fetching review logs:', err);
-    } finally {
-      setReviewLogsLoading(false);
-    }
-  };
 
-  const handleTriggerReview = async (jobId: string, immediate: boolean) => {
-    setTriggeringJobIds(prev => ({ ...prev, [jobId]: 'pending' }));
-    try {
-      const res = await fetch('/api/webhooks/job-completed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobId, immediate })
-      });
-      const data = await res.json();
-      if (res.ok && !data.error) {
-        if (data.skipped) {
-          setTriggeringJobIds(prev => ({ ...prev, [jobId]: 'failed' }));
-          alert(data.reason || 'Skipped to prevent spamming.');
-        } else {
-          setTriggeringJobIds(prev => ({ ...prev, [jobId]: 'sent' }));
-          fetchReviewLogs();
-        }
-      } else {
-        setTriggeringJobIds(prev => ({ ...prev, [jobId]: 'failed' }));
-        alert(data.error || 'Failed to trigger review blitz.');
-      }
-    } catch (err) {
-      console.error('Error triggering review blitz:', err);
-      setTriggeringJobIds(prev => ({ ...prev, [jobId]: 'failed' }));
-    }
-  };
 
   const handleRunRadar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1443,166 +1375,6 @@ export default function Dashboard() {
                     </div>
                   );
                 })}
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
-                {/* COMPLETED JOBS & MANUAL SMS TRIGGER CARD */}
-                <div className="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden flex flex-col">
-                  <div className="p-6 border-b border-neutral-800">
-                    <h3 className="font-semibold text-base text-neutral-100">Review Blitz Dispatch</h3>
-                    <p className="text-xs text-neutral-400 mt-0.5">List of recently completed bookings. Click to trigger the Twilio review farming automation.</p>
-                  </div>
-
-                  <div className="overflow-x-auto flex-1">
-                    <table className="w-full text-left text-sm border-collapse">
-                      <thead>
-                        <tr className="bg-neutral-950/40 text-neutral-400 border-b border-neutral-800 text-xs uppercase font-semibold">
-                          <th className="px-6 py-4">Customer / Job</th>
-                          <th className="px-6 py-4">City</th>
-                          <th className="px-6 py-4">Phone</th>
-                          <th className="px-6 py-4 text-center">Blitz Status</th>
-                          <th className="px-6 py-4 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-neutral-850">
-                        {completedJobs.map((job) => {
-                          const stateStatus = triggeringJobIds[job.id] || '';
-                          
-                          // Check if job exists in the review logs
-                          const requestLog = reviewLogs.find(l => l.job_id === job.id);
-                          const logStatus = requestLog ? requestLog.status : '';
-                          const activeStatus = stateStatus || logStatus || 'not_sent';
-
-                          return (
-                            <tr key={job.id} className="hover:bg-neutral-900/40 transition-colors">
-                              <td className="px-6 py-4">
-                                <div className="font-semibold text-neutral-200">{job.customer}</div>
-                                <div className="text-[10px] text-neutral-400 font-mono mt-0.5">{job.id} • {job.service}</div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <span className="text-xs font-semibold text-neutral-300 flex items-center space-x-1">
-                                  <MapPin size={12} className="text-neutral-500" />
-                                  <span>{job.city}</span>
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 text-xs font-mono text-neutral-400">{job.phone}</td>
-                              <td className="px-6 py-4 text-center">
-                                {activeStatus === 'sent' && (
-                                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                    <CheckCircle2 size={10} />
-                                    <span>Sent</span>
-                                  </span>
-                                )}
-                                {activeStatus === 'pending' && (
-                                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
-                                    <Clock size={10} />
-                                    <span>Pending...</span>
-                                  </span>
-                                )}
-                                {activeStatus === 'failed' && (
-                                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                                    <XCircle size={10} />
-                                    <span>Skipped/Error</span>
-                                  </span>
-                                )}
-                                {activeStatus === 'not_sent' && (
-                                  <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-neutral-800 text-neutral-400 border border-neutral-700">
-                                    <span>Not Sent</span>
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="flex items-center justify-center space-x-2">
-                                  <button
-                                    onClick={() => handleTriggerReview(job.id, false)}
-                                    disabled={activeStatus === 'pending' || activeStatus === 'sent'}
-                                    className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-750 disabled:opacity-50 text-[10px] font-bold rounded text-neutral-300 border border-neutral-700 flex items-center space-x-1"
-                                    title="Simulates standard 30-minute webhook delay trigger"
-                                  >
-                                    <Clock size={10} />
-                                    <span>Delay (30m)</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleTriggerReview(job.id, true)}
-                                    disabled={activeStatus === 'pending' || activeStatus === 'sent'}
-                                    className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-[10px] font-bold rounded text-white flex items-center space-x-1"
-                                    title="Triggers Twilio SMS request immediately for manual override/testing"
-                                  >
-                                    <Send size={10} />
-                                    <span>Send Now</span>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* LOGGED SMS DISPATCH ACTIVITY LIST */}
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-4 border-b border-neutral-800 pb-3">
-                      <div>
-                        <h3 className="font-semibold text-neutral-100">Live SMS Activity Feed</h3>
-                        <p className="text-[10px] text-neutral-400">Database log of sent keyword-coached review requests.</p>
-                      </div>
-                      <button 
-                        onClick={fetchReviewLogs}
-                        disabled={reviewLogsLoading}
-                        className="p-1.5 bg-neutral-800 border border-neutral-750 text-neutral-300 rounded hover:bg-neutral-700 disabled:opacity-50 transition-all"
-                      >
-                        <RefreshCw size={12} className={reviewLogsLoading ? 'animate-spin' : ''} />
-                      </button>
-                    </div>
-
-                    <div className="space-y-4 max-h-[460px] overflow-y-auto pr-1">
-                      {reviewLogs.length === 0 ? (
-                        <div className="text-center py-12 text-neutral-500 text-xs">
-                          <MessageSquare size={24} className="mx-auto mb-2 text-neutral-600" />
-                          <span>No logged messages yet.</span>
-                        </div>
-                      ) : (
-                        reviewLogs.map((log) => (
-                          <div key={log.id} className="bg-neutral-950/60 border border-neutral-850 p-3.5 rounded-xl space-y-2">
-                            <div className="flex items-center justify-between text-[10px] text-neutral-400 border-b border-neutral-900 pb-1.5">
-                              <span className="font-semibold text-neutral-300">{log.customer_name} ({log.city})</span>
-                              <span>{new Date(log.sms_sent_at || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
-                            
-                            <p className="text-[11px] text-neutral-300 leading-relaxed font-sans italic bg-neutral-950/40 p-2 rounded border border-neutral-900">
-                              &quot;{log.sms_body}&quot;
-                            </p>
-                            
-                            <div className="flex items-center justify-between text-[9px]">
-                              <span className="text-neutral-500 font-mono">Recipient: {log.customer_phone}</span>
-                              {log.status === 'sent' ? (
-                                <span className="text-emerald-400 font-semibold flex items-center space-x-0.5">
-                                  <span className="w-1 h-1 rounded-full bg-emerald-500"></span>
-                                  <span>Delivered</span>
-                                </span>
-                              ) : log.status === 'pending' ? (
-                                <span className="text-amber-400 font-semibold flex items-center space-x-0.5">
-                                  <span className="w-1 h-1 rounded-full bg-amber-500"></span>
-                                  <span>Scheduled (30m delay)</span>
-                                </span>
-                              ) : (
-                                <span className="text-rose-400 font-semibold flex items-center space-x-0.5">
-                                  <span className="w-1 h-1 rounded-full bg-rose-500"></span>
-                                  <span>Skipped / Error</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-
               </div>
 
             </div>
