@@ -563,7 +563,7 @@ export default function Dashboard() {
               }`}
             >
               <Search size={18} />
-              <span>Job Radar (Craigslist)</span>
+              <span>Classifieds Radar</span>
             </button>
 
             <button 
@@ -622,7 +622,7 @@ export default function Dashboard() {
             {activeTab === 'home' && "Operational Overview"}
             {activeTab === 'radar' && "Competitor Radar"}
             {activeTab === 'gbp' && "Google Business Profile Sync"}
-            {activeTab === 'job-radar' && "Classifieds Job Radar (Craigslist)"}
+            {activeTab === 'job-radar' && "Classifieds Job Radar"}
             {activeTab === 'reviews' && "Live Cleaner Dispatch Board"}
             {activeTab === 'mission' && "Mission Control (Call Console)"}
             {activeTab === 'guide' && "How-To Guide & Operational Flow"}
