@@ -103,7 +103,7 @@ export async function POST() {
 
     if (supabaseAdmin) {
       // Upsert profiles into the database to persist them
-      const { data, error } = await supabaseAdmin
+      const { error } = await supabaseAdmin
         .from('gbp_listings')
         .upsert(
           PROFILES_TO_SYNC.map(p => ({
@@ -113,15 +113,23 @@ export async function POST() {
             google_review_link: p.google_review_link
           })),
           { onConflict: 'name' }
-        )
-        .select('*, competitors(*)');
+        );
 
       if (error) {
         throw new Error(`Database upsert error: ${error.message}`);
       }
 
-      if (data) {
-        syncedListings = data;
+      // Fetch all listings with competitors so we include newly scanned custom cities
+      const { data: allListings, error: fetchError } = await supabaseAdmin
+        .from('gbp_listings')
+        .select('*, competitors(*)');
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      if (allListings) {
+        syncedListings = allListings;
       }
     }
 

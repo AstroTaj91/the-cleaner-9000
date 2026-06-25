@@ -115,26 +115,51 @@ export async function POST(request: Request) {
     // Write competitors to Supabase database if connected
     if (supabaseAdmin) {
       try {
+        const trimmedSuburb = suburb.trim();
         // Find matching GBP listing based on city name (case-insensitive search)
         const { data: gbpListing } = await supabaseAdmin
           .from('gbp_listings')
           .select('id')
-          .ilike('city', suburb)
+          .ilike('city', trimmedSuburb)
           .maybeSingle();
 
-        if (gbpListing) {
+        let targetListingId = gbpListing?.id;
+
+        if (!targetListingId) {
+          // Capitalize city name (e.g. "ancaster" -> "Ancaster")
+          const capitalizedCity = trimmedSuburb.charAt(0).toUpperCase() + trimmedSuburb.slice(1).toLowerCase();
+          
+          const { data: newListing, error: createError } = await supabaseAdmin
+            .from('gbp_listings')
+            .insert({
+              name: `${capitalizedCity} House Cleaning Services`,
+              city: capitalizedCity,
+              review_count: 0,
+              google_review_link: `https://g.page/r/${capitalizedCity.toLowerCase()}-cleaning-mock/review`
+            })
+            .select('id')
+            .maybeSingle();
+
+          if (createError) {
+            console.error('Failed to auto-create GBP listing for new city:', createError);
+          } else if (newListing) {
+            targetListingId = newListing.id;
+          }
+        }
+
+        if (targetListingId) {
           // Delete existing competitors for this listing
           await supabaseAdmin
             .from('competitors')
             .delete()
-            .eq('gbp_listing_id', gbpListing.id);
+            .eq('gbp_listing_id', targetListingId);
 
           // Insert new competitors
           await supabaseAdmin
             .from('competitors')
             .insert(
               competitors.map(c => ({
-                gbp_listing_id: gbpListing.id,
+                gbp_listing_id: targetListingId,
                 name: c.name,
                 review_count: c.reviewCount,
                 rating: c.rating,
