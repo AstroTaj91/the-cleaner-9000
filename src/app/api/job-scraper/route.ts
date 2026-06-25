@@ -204,7 +204,7 @@ export async function POST(request: Request) {
                 title: j.title || 'Cleaning Gig',
                 pay: j.pay || (cat === 'construction' ? '$450 Payout' : cat === 'commercial' ? '$290 per visit' : '$200 Flat Rate'),
                 location: j.location || (targetCity ? `${targetCity}, ON` : 'GTA, ON'),
-                url: j.url.startsWith('http') ? j.url : `https://${queryCity}.craigslist.org${j.url}`,
+                url: j.url.startsWith('http') ? j.url : `https://toronto.craigslist.org${j.url}`,
                 posted: j.posted || 'Just posted',
                 description: desc || 'No description provided.',
                 service_type: cat,
@@ -229,14 +229,35 @@ export async function POST(request: Request) {
       ? targetCity.charAt(0).toUpperCase() + targetCity.slice(1).toLowerCase()
       : 'Oakville';
 
-    const customizedJobs: ScrapedJob[] = GLOBAL_MOCK_LISTINGS.map((job) => ({
-      ...job,
-      location: job.location.replace(/\[City\]/g, capitalizedCity),
-      title: job.title.replace(/\[City\]/g, capitalizedCity),
-      description: job.description.replace(/\[City\]/g, capitalizedCity),
-      // Update link subdomains or URLs for the specific city where applicable
-      url: job.url.replace(/toronto/g, capitalizedCity.toLowerCase())
-    }));
+    const customizedJobs: ScrapedJob[] = GLOBAL_MOCK_LISTINGS.map((job) => {
+      const encCity = encodeURIComponent(capitalizedCity);
+      let realUrl = '';
+      
+      switch (job.source) {
+        case 'craigslist':
+          realUrl = `https://toronto.craigslist.org/search/ggg?query=${encodeURIComponent(job.service_type === 'construction' ? 'construction clean' : job.service_type === 'commercial' ? 'office clean' : 'house clean')}+${encCity}`;
+          break;
+        case 'kijiji':
+          realUrl = `https://www.kijiji.ca/b-search.html?searchTerm=${encodeURIComponent(job.service_type === 'construction' ? 'construction cleaning' : job.service_type === 'commercial' ? 'commercial cleaning' : 'house cleaning')}+${encCity}`;
+          break;
+        case 'indeed':
+          realUrl = `https://ca.indeed.com/jobs?q=${encodeURIComponent(job.service_type === 'construction' ? 'construction cleaning' : job.service_type === 'commercial' ? 'commercial janitorial' : 'house cleaner')}&l=${encCity}%2C+ON`;
+          break;
+        case 'housekeeper':
+          realUrl = `https://housekeeper.com/cleaner-jobs`;
+          break;
+        default:
+          realUrl = 'https://toronto.craigslist.org/search/ggg?query=cleaning';
+      }
+
+      return {
+        ...job,
+        location: job.location.replace(/\[City\]/g, capitalizedCity),
+        title: job.title.replace(/\[City\]/g, capitalizedCity),
+        description: job.description.replace(/\[City\]/g, capitalizedCity),
+        url: realUrl
+      };
+    });
 
     return NextResponse.json({
       success: true,
