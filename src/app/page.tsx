@@ -79,6 +79,7 @@ interface ScrapedJob {
   posted: string;
   description: string;
   service_type: 'residential' | 'commercial' | 'construction';
+  source?: 'craigslist' | 'kijiji' | 'indeed' | 'housekeeper';
 }
 
 interface DispatchRun {
@@ -176,7 +177,6 @@ export default function Dashboard() {
   const [scrapedJobs, setScrapedJobs] = useState<ScrapedJob[]>([]);
   const [scraperLoading, setScraperLoading] = useState(false);
   const [scraperCity, setScraperCity] = useState('Oakville');
-  const [scraperKeyword, setScraperKeyword] = useState('construction cleanup');
   const [scraperError, setScraperError] = useState('');
 
   // GBP States
@@ -413,7 +413,7 @@ export default function Dashboard() {
       const res = await fetch('/api/job-scraper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: scraperCity, keyword: scraperKeyword })
+        body: JSON.stringify({ city: scraperCity })
       });
 
       if (!res.ok) {
@@ -1040,28 +1040,13 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="flex-1 space-y-2">
-                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Search Keyword</label>
-                    <div className="relative">
-                      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
-                      <input 
-                        type="text" 
-                        value={scraperKeyword} 
-                        onChange={(e) => setScraperKeyword(e.target.value)}
-                        placeholder="e.g. construction cleanup, office cleaning, house cleaning"
-                        className="w-full bg-neutral-950 border border-neutral-800 focus:border-indigo-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-neutral-200 focus:outline-none transition-all"
-                        required
-                      />
-                    </div>
-                  </div>
-
                   <button 
                     type="submit" 
                     disabled={scraperLoading}
                     className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-sm font-semibold rounded-xl text-white shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center space-x-2"
                   >
                     <RefreshCw size={16} className={scraperLoading ? 'animate-spin' : ''} />
-                    <span>{scraperLoading ? 'Scraping Classifieds...' : 'Scan Classifieds'}</span>
+                    <span>{scraperLoading ? 'Scanning GTA Cleaning Gigs...' : 'Scan GTA Cleaning Gigs'}</span>
                   </button>
                 </form>
 
@@ -1077,7 +1062,7 @@ export default function Dashboard() {
               <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
                 <div className="p-6 border-b border-neutral-800">
                   <h3 className="font-semibold text-base text-neutral-100">Scraped Cleaning Gigs & Contracts</h3>
-                  <p className="text-xs text-neutral-400 mt-0.5">Scraped classified postings matching your service keywords. Review details and import to book.</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">Scraped cleaning jobs and contracts from across Craigslist, Kijiji, Indeed, and Housekeeper.com. Review details and import to book.</p>
                 </div>
 
                 <div className="p-6">
@@ -1085,7 +1070,7 @@ export default function Dashboard() {
                     <div className="py-12 text-center">
                       <Search className="mx-auto text-neutral-600 mb-3" size={36} />
                       <h4 className="text-sm font-semibold text-neutral-300">No scraped results found</h4>
-                      <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">Enter a city and keyword above, then click Scan to pull cleaning contracts from Craigslist.</p>
+                      <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">Enter a target city above, then click Scan to pull cleaning contracts from Craigslist, Kijiji, Indeed, and Housekeeper.com.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-6">
@@ -1093,15 +1078,30 @@ export default function Dashboard() {
                         <div key={idx} className="bg-neutral-950/60 border border-neutral-800/80 rounded-xl p-5 space-y-4 hover:border-neutral-700 transition-all">
                           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                             <div className="space-y-1">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                                job.service_type === 'construction'
-                                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                  : job.service_type === 'commercial'
-                                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                  : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                              }`}>
-                                {job.service_type.charAt(0).toUpperCase() + job.service_type.slice(1)}
-                              </span>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                                  job.service_type === 'construction'
+                                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                    : job.service_type === 'commercial'
+                                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                    : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                                }`}>
+                                  {job.service_type.charAt(0).toUpperCase() + job.service_type.slice(1)}
+                                </span>
+                                {job.source && (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                                    job.source === 'craigslist'
+                                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                      : job.source === 'kijiji'
+                                      ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                                      : job.source === 'indeed'
+                                      ? 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+                                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                  }`}>
+                                    {job.source.charAt(0).toUpperCase() + job.source.slice(1)}
+                                  </span>
+                                )}
+                              </div>
                               <h4 className="font-bold text-neutral-150 text-base leading-snug">{job.title}</h4>
                               <div className="flex items-center space-x-3 text-xs text-neutral-400 pt-1">
                                 <span className="flex items-center space-x-1">
