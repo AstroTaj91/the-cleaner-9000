@@ -138,7 +138,6 @@ export async function POST(request: Request) {
   try {
     const { city } = await request.json();
     const targetCity = (city || '').trim();
-    const normalizedCity = targetCity.toLowerCase();
 
     let scrapeErrorMsg = null;
     const firecrawlApiKey = process.env.FIRECRAWL_API_KEY;
@@ -146,10 +145,10 @@ export async function POST(request: Request) {
 
     if (hasKey) {
       try {
-        const queryCity = normalizedCity || 'toronto';
-        
-        // Scraping Craigslist cleaning gigs via Firecrawl
-        const clUrl = `https://${queryCity}.craigslist.org/search/ggg?query=cleaning`;
+        // Craigslist GTA listings are all hosted under the toronto subdomain.
+        // We target the main toronto subdomain and append the target city keyword to find localized gigs.
+        const queryTerm = targetCity ? `cleaning+${encodeURIComponent(targetCity.toLowerCase())}` : 'cleaning';
+        const clUrl = `https://toronto.craigslist.org/search/ggg?query=${queryTerm}`;
         const firecrawlRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
           method: 'POST',
           headers: {
