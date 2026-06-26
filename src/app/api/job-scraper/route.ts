@@ -140,9 +140,11 @@ export async function POST(request: Request) {
     const targetCity = (city || '').trim();
     const normalizedCity = targetCity.toLowerCase();
 
+    let scrapeErrorMsg = null;
     const firecrawlApiKey = process.env.FIRECRAWL_API_KEY;
+    const hasKey = !!(firecrawlApiKey && firecrawlApiKey !== 'your_firecrawl_api_key');
 
-    if (firecrawlApiKey && firecrawlApiKey !== 'your_firecrawl_api_key') {
+    if (hasKey) {
       try {
         const queryCity = normalizedCity || 'toronto';
         
@@ -215,11 +217,17 @@ export async function POST(request: Request) {
             return NextResponse.json({
               success: true,
               scraped: true,
+              hasKey: true,
               jobs: parsedJobs
             });
+          } else {
+            scrapeErrorMsg = `Firecrawl API responded with success=false or invalid schema`;
           }
+        } else {
+          scrapeErrorMsg = `Firecrawl API request failed with HTTP ${firecrawlRes.status}`;
         }
       } catch (scrapeErr) {
+        scrapeErrorMsg = scrapeErr instanceof Error ? scrapeErr.message : String(scrapeErr);
         console.error('Firecrawl scraping error, falling back to mock data:', scrapeErr);
       }
     }
@@ -262,6 +270,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       scraped: false,
+      hasKey,
+      scrapeError: scrapeErrorMsg,
       jobs: customizedJobs
     });
 
