@@ -145,10 +145,9 @@ export async function POST(request: Request) {
 
     if (hasKey) {
       try {
-        // Craigslist GTA listings are all hosted under the toronto subdomain.
-        // We target the main toronto subdomain and append the target city keyword to find localized gigs.
-        const queryTerm = targetCity ? `cleaning+${encodeURIComponent(targetCity.toLowerCase())}` : 'cleaning';
-        const clUrl = `https://toronto.craigslist.org/search/ggg?query=${queryTerm}`;
+        // Since Firecrawl blocks Craigslist to avoid legal liability, we fetch live listings 
+        // directly from Indeed, which is highly active and fully supported by Firecrawl.
+        const clUrl = `https://ca.indeed.com/jobs?q=cleaning&l=${encodeURIComponent(targetCity || 'Toronto')}%2C+ON`;
         const firecrawlRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
           method: 'POST',
           headers: {
@@ -205,7 +204,7 @@ export async function POST(request: Request) {
                 title: j.title || 'Cleaning Gig',
                 pay: j.pay || (cat === 'construction' ? '$450 Payout' : cat === 'commercial' ? '$290 per visit' : '$200 Flat Rate'),
                 location: j.location || (targetCity ? `${targetCity}, ON` : 'GTA, ON'),
-                url: j.url.startsWith('http') ? j.url : `https://toronto.craigslist.org${j.url}`,
+                url: j.url.startsWith('http') ? j.url : `https://ca.indeed.com${j.url}`,
                 posted: j.posted || 'Just posted',
                 description: desc || 'No description provided.',
                 service_type: cat,
