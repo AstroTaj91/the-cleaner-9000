@@ -266,10 +266,12 @@ export async function POST(request: Request) {
       };
     });
 
+    const keySnippet = firecrawlApiKey ? `${firecrawlApiKey.substring(0, 5)}...${firecrawlApiKey.substring(firecrawlApiKey.length - 5)}` : null;
     return NextResponse.json({
       success: true,
       scraped: false,
       hasKey,
+      keySnippet,
       scrapeError: scrapeErrorMsg,
       jobs: customizedJobs
     });
