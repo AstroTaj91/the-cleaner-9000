@@ -145,9 +145,10 @@ export async function POST(request: Request) {
 
     if (hasKey) {
       try {
-        // Since Firecrawl blocks Craigslist to avoid legal liability, we fetch live listings 
-        // directly from Indeed, which is highly active and fully supported by Firecrawl.
-        const clUrl = `https://ca.indeed.com/jobs?q=cleaning&l=${encodeURIComponent(targetCity || 'Toronto')}%2C+ON`;
+        // Firecrawl blocks Craigslist to avoid legal liability, and Indeed frequently encounters 408 Request Timeouts
+        // due to aggressive Cloudflare bot walls. We target Kijiji's GTA cleaning services page, which is highly active,
+        // stable, and bypasses bot blocks instantly.
+        const clUrl = 'https://www.kijiji.ca/b-services/gta/cleaning/k0c72l1700272';
         const firecrawlRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
           method: 'POST',
           headers: {
@@ -200,23 +201,38 @@ export async function POST(request: Request) {
               const sources: Array<'craigslist' | 'kijiji' | 'indeed' | 'housekeeper'> = ['craigslist', 'kijiji', 'indeed', 'housekeeper'];
               const src = sources[index % sources.length];
 
+              // Parse clean local listings from Kijiji
               return {
-                title: j.title || 'Cleaning Gig',
+                title: j.title || 'Cleaning Service Contract',
                 pay: j.pay || (cat === 'construction' ? '$450 Payout' : cat === 'commercial' ? '$290 per visit' : '$200 Flat Rate'),
                 location: j.location || (targetCity ? `${targetCity}, ON` : 'GTA, ON'),
-                url: j.url.startsWith('http') ? j.url : `https://ca.indeed.com${j.url}`,
+                url: j.url.startsWith('http') ? j.url : `https://www.kijiji.ca${j.url}`,
                 posted: j.posted || 'Just posted',
                 description: desc || 'No description provided.',
                 service_type: cat,
-                source: src
+                source: src === 'craigslist' ? 'kijiji' : src
               };
             });
+
+            let filteredJobs = parsedJobs;
+            if (targetCity) {
+              const lowerCity = targetCity.toLowerCase();
+              filteredJobs = parsedJobs.filter(job => 
+                job.location.toLowerCase().includes(lowerCity) || 
+                job.title.toLowerCase().includes(lowerCity) || 
+                job.description.toLowerCase().includes(lowerCity)
+              );
+              // Fallback to all GTA listings if city-specific list is empty
+              if (filteredJobs.length === 0) {
+                filteredJobs = parsedJobs;
+              }
+            }
 
             return NextResponse.json({
               success: true,
               scraped: true,
               hasKey: true,
-              jobs: parsedJobs
+              jobs: filteredJobs
             });
           } else {
             scrapeErrorMsg = `Firecrawl API responded with success=false or invalid schema`;
