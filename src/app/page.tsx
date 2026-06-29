@@ -79,7 +79,7 @@ interface ScrapedJob {
   posted: string;
   description: string;
   service_type: 'residential' | 'commercial' | 'construction';
-  source?: 'craigslist' | 'kijiji' | 'indeed' | 'housekeeper';
+  source?: 'craigslist' | 'kijiji' | 'indeed' | 'housekeeper' | 'simplyhired';
 }
 
 interface DispatchRun {
@@ -1062,7 +1062,7 @@ export default function Dashboard() {
               <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
                 <div className="p-6 border-b border-neutral-800">
                   <h3 className="font-semibold text-base text-neutral-100">Scraped Cleaning Gigs & Contracts</h3>
-                  <p className="text-xs text-neutral-400 mt-0.5">Scraped cleaning jobs and contracts from across Craigslist, Kijiji, Indeed, and Housekeeper.com. Review details and import to book.</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">Scraped cleaning jobs and contracts from across Kijiji, Housekeeper.com, and SimplyHired. Review details and import to book.</p>
                 </div>
 
                 <div className="p-6">
@@ -1070,7 +1070,7 @@ export default function Dashboard() {
                     <div className="py-12 text-center">
                       <Search className="mx-auto text-neutral-600 mb-3" size={36} />
                       <h4 className="text-sm font-semibold text-neutral-300">No scraped results found</h4>
-                      <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">Enter a target city above, then click Scan to pull cleaning contracts from Craigslist, Kijiji, Indeed, and Housekeeper.com.</p>
+                      <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">Enter a target city above, then click Scan to pull cleaning contracts from Kijiji, Housekeeper.com, and SimplyHired.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-6">
@@ -1096,9 +1096,11 @@ export default function Dashboard() {
                                       ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
                                       : job.source === 'indeed'
                                       ? 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+                                      : job.source === 'simplyhired'
+                                      ? 'bg-pink-500/10 text-pink-400 border-pink-500/20'
                                       : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                   }`}>
-                                    {job.source.charAt(0).toUpperCase() + job.source.slice(1)}
+                                    {job.source === 'simplyhired' ? 'SimplyHired' : job.source.charAt(0).toUpperCase() + job.source.slice(1)}
                                   </span>
                                 )}
                               </div>

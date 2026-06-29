@@ -8,7 +8,7 @@ interface ScrapedJob {
   posted: string;
   description: string;
   service_type: 'residential' | 'commercial' | 'construction';
-  source: 'craigslist' | 'kijiji' | 'indeed' | 'housekeeper';
+  source: 'simplyhired' | 'kijiji' | 'indeed' | 'housekeeper';
 }
 
 const GLOBAL_MOCK_LISTINGS: ScrapedJob[] = [
@@ -16,11 +16,11 @@ const GLOBAL_MOCK_LISTINGS: ScrapedJob[] = [
     title: "Post-Construction Final Clean - Condo Development",
     pay: "$450 Flat Rate",
     location: "[City], ON",
-    url: "https://toronto.craigslist.org/gta/ggg/construction-clean",
+    url: "https://www.simplyhired.ca/search?q=construction-clean",
     posted: "15 mins ago",
     description: "Final detail cleaning for 3 brand-new townhouse units. Builders have completed all inspections. Need drywall dust wiped off walls, windows shined, and floors vacuumed/mopped. Ready for client occupancy.",
     service_type: 'construction',
-    source: 'craigslist'
+    source: 'simplyhired'
   },
   {
     title: "Commercial Office Building Janitorial Contract",
@@ -76,11 +76,11 @@ const GLOBAL_MOCK_LISTINGS: ScrapedJob[] = [
     title: "Move-Out Clean - 3 Bed / 2 Bath Empty House",
     pay: "$250 Flat Rate",
     location: "[City], ON",
-    url: "https://toronto.craigslist.org/gta/ggg/move-out-clean",
+    url: "https://www.simplyhired.ca/search?q=move-out-clean",
     posted: "1 day ago",
     description: "End of lease cleaning. The house is completely empty. Needs thorough appliance cleaning (fridge, oven), inside cabinets, baseboards, and window tracks.",
     service_type: 'residential',
-    source: 'craigslist'
+    source: 'simplyhired'
   },
   {
     title: "Weekly Home Cleaning Maintenance - 2 Bed / 1.5 Bath",
@@ -126,11 +126,11 @@ const GLOBAL_MOCK_LISTINGS: ScrapedJob[] = [
     title: "Pre-Sale Deep Clean & Carpets - 3 Story Home",
     pay: "$550 Flat Rate",
     location: "[City], ON",
-    url: "https://toronto.craigslist.org/gta/ggg/presale-deep-clean",
+    url: "https://www.simplyhired.ca/search?q=presale-deep-clean",
     posted: "5 days ago",
     description: "Full deep clean of a 3-story house preparing for listing. Carpets steam cleaned, kitchen deep cleaned, windows inside and out, and all surfaces polished. High quality standards expected.",
     service_type: 'residential',
-    source: 'craigslist'
+    source: 'simplyhired'
   }
 ];
 
@@ -145,104 +145,134 @@ export async function POST(request: Request) {
 
     if (hasKey) {
       try {
-        // Firecrawl blocks Craigslist to avoid legal liability, and Indeed frequently encounters 408 Request Timeouts
-        // due to aggressive Cloudflare bot walls. We target Kijiji's GTA cleaning services page, which is highly active,
-        // stable, and bypasses bot blocks instantly.
-        const clUrl = 'https://www.kijiji.ca/b-services/gta/cleaning/k0c72l1700272';
-        const firecrawlRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${firecrawlApiKey}`
+        const scrapeTargets = [
+          {
+            name: 'kijiji' as const,
+            url: 'https://www.kijiji.ca/b-services/gta/cleaning/k0c72l1700272',
+            domain: 'https://www.kijiji.ca'
           },
-          body: JSON.stringify({
-            url: clUrl,
-            formats: ['extract'],
-            extract: {
-              schema: {
-                type: 'object',
-                properties: {
-                  jobs: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        title: { type: 'string' },
-                        pay: { type: 'string' },
-                        location: { type: 'string' },
-                        url: { type: 'string' },
-                        posted: { type: 'string' },
-                        description: { type: 'string' }
-                      },
-                      required: ['title', 'url']
+          {
+            name: 'housekeeper' as const,
+            url: 'https://housekeeper.com/cleaner-jobs',
+            domain: 'https://housekeeper.com'
+          },
+          {
+            name: 'simplyhired' as const,
+            url: 'https://www.simplyhired.ca/search?q=cleaning&l=Toronto%2C+ON',
+            domain: 'https://www.simplyhired.ca'
+          }
+        ];
+
+        const scrapePromises = scrapeTargets.map(async (target) => {
+          const firecrawlRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${firecrawlApiKey}`
+            },
+            body: JSON.stringify({
+              url: target.url,
+              formats: ['extract'],
+              extract: {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    jobs: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          title: { type: 'string' },
+                          pay: { type: 'string' },
+                          location: { type: 'string' },
+                          url: { type: 'string' },
+                          posted: { type: 'string' },
+                          description: { type: 'string' }
+                        },
+                        required: ['title', 'url']
+                      }
                     }
                   }
                 }
               }
+            })
+          });
+
+          if (!firecrawlRes.ok) {
+            throw new Error(`Firecrawl API request failed with HTTP ${firecrawlRes.status}`);
+          }
+
+          const data = await firecrawlRes.json();
+          if (!data.success || !data.data || !data.data.extract || !data.data.extract.jobs) {
+            throw new Error(`Firecrawl API responded with success=false or invalid schema`);
+          }
+
+          const rawJobs = data.data.extract.jobs as Record<string, string>[];
+          const parsedJobs: ScrapedJob[] = rawJobs.map((j) => {
+            const desc = j.description || '';
+            let cat: 'construction' | 'commercial' | 'residential' = 'residential';
+            
+            if (desc.toLowerCase().includes('construction') || desc.toLowerCase().includes('renov') || desc.toLowerCase().includes('site')) {
+              cat = 'construction';
+            } else if (desc.toLowerCase().includes('office') || desc.toLowerCase().includes('commercial') || desc.toLowerCase().includes('clinic') || desc.toLowerCase().includes('janitorial')) {
+              cat = 'commercial';
             }
-          })
+
+            return {
+              title: j.title || 'Cleaning Gig Contract',
+              pay: j.pay || (cat === 'construction' ? '$450 Payout' : cat === 'commercial' ? '$290 per visit' : '$200 Flat Rate'),
+              location: j.location || (targetCity ? `${targetCity}, ON` : 'GTA, ON'),
+              url: j.url.startsWith('http') ? j.url : `${target.domain}${j.url}`,
+              posted: j.posted || 'Just posted',
+              description: desc || 'No description provided.',
+              service_type: cat,
+              source: target.name
+            };
+          });
+
+          return parsedJobs;
         });
 
-        if (firecrawlRes.ok) {
-          const data = await firecrawlRes.json();
-          if (data.success && data.data && data.data.extract && data.data.extract.jobs) {
-            const rawJobs = data.data.extract.jobs as Record<string, string>[];
-            const parsedJobs: ScrapedJob[] = rawJobs.map((j, index) => {
-              const desc = j.description || '';
-              let cat: 'construction' | 'commercial' | 'residential' = 'residential';
-              
-              if (desc.toLowerCase().includes('construction') || desc.toLowerCase().includes('renov') || desc.toLowerCase().includes('site')) {
-                cat = 'construction';
-              } else if (desc.toLowerCase().includes('office') || desc.toLowerCase().includes('commercial') || desc.toLowerCase().includes('clinic') || desc.toLowerCase().includes('janitorial')) {
-                cat = 'commercial';
-              }
+        const results = await Promise.allSettled(scrapePromises);
+        const allJobs: ScrapedJob[] = [];
+        const errors: string[] = [];
 
-              // Alternate source simulation for multi-platform scraped feel
-              const sources: Array<'craigslist' | 'kijiji' | 'indeed' | 'housekeeper'> = ['craigslist', 'kijiji', 'indeed', 'housekeeper'];
-              const src = sources[index % sources.length];
-
-              // Parse clean local listings from Kijiji
-              return {
-                title: j.title || 'Cleaning Service Contract',
-                pay: j.pay || (cat === 'construction' ? '$450 Payout' : cat === 'commercial' ? '$290 per visit' : '$200 Flat Rate'),
-                location: j.location || (targetCity ? `${targetCity}, ON` : 'GTA, ON'),
-                url: j.url.startsWith('http') ? j.url : `https://www.kijiji.ca${j.url}`,
-                posted: j.posted || 'Just posted',
-                description: desc || 'No description provided.',
-                service_type: cat,
-                source: src === 'craigslist' ? 'kijiji' : src
-              };
-            });
-
-            let filteredJobs = parsedJobs;
-            if (targetCity) {
-              const lowerCity = targetCity.toLowerCase();
-              filteredJobs = parsedJobs.filter(job => 
-                job.location.toLowerCase().includes(lowerCity) || 
-                job.title.toLowerCase().includes(lowerCity) || 
-                job.description.toLowerCase().includes(lowerCity)
-              );
-              // Fallback to all GTA listings if city-specific list is empty
-              if (filteredJobs.length === 0) {
-                filteredJobs = parsedJobs;
-              }
-            }
-
-            return NextResponse.json({
-              success: true,
-              scraped: true,
-              hasKey: true,
-              jobs: filteredJobs
-            });
+        results.forEach((res, i) => {
+          if (res.status === 'fulfilled') {
+            allJobs.push(...res.value);
           } else {
-            scrapeErrorMsg = `Firecrawl API responded with success=false or invalid schema`;
+            errors.push(`${scrapeTargets[i].name}: ${res.reason instanceof Error ? res.reason.message : String(res.reason)}`);
           }
+        });
+
+        if (allJobs.length > 0) {
+          let filteredJobs = allJobs;
+          if (targetCity) {
+            const lowerCity = targetCity.toLowerCase();
+            filteredJobs = allJobs.filter(job => 
+              job.location.toLowerCase().includes(lowerCity) || 
+              job.title.toLowerCase().includes(lowerCity) || 
+              job.description.toLowerCase().includes(lowerCity)
+            );
+            if (filteredJobs.length === 0) {
+              filteredJobs = allJobs;
+            }
+          }
+
+          return NextResponse.json({
+            success: true,
+            scraped: true,
+            hasKey: true,
+            jobs: filteredJobs,
+            scrapeErrors: errors.length > 0 ? errors : null
+          });
         } else {
-          scrapeErrorMsg = `Firecrawl API request failed with HTTP ${firecrawlRes.status}`;
+          throw new Error(`All parallel scrapers failed: ${errors.join('; ')}`);
         }
+
       } catch (scrapeErr) {
         scrapeErrorMsg = scrapeErr instanceof Error ? scrapeErr.message : String(scrapeErr);
-        console.error('Firecrawl scraping error, falling back to mock data:', scrapeErr);
+        console.error('Firecrawl parallel scraping error, falling back to mock data:', scrapeErr);
       }
     }
 
@@ -256,8 +286,8 @@ export async function POST(request: Request) {
       let realUrl = '';
       
       switch (job.source) {
-        case 'craigslist':
-          realUrl = `https://toronto.craigslist.org/search/ggg?query=${encodeURIComponent(job.service_type === 'construction' ? 'construction clean' : job.service_type === 'commercial' ? 'office clean' : 'house clean')}+${encCity}`;
+        case 'simplyhired':
+          realUrl = `https://www.simplyhired.ca/search?q=${encodeURIComponent(job.service_type === 'construction' ? 'construction clean' : job.service_type === 'commercial' ? 'commercial clean' : 'house cleaning')}&l=${encCity}%2C+ON`;
           break;
         case 'kijiji':
           realUrl = `https://www.kijiji.ca/b-search.html?searchTerm=${encodeURIComponent(job.service_type === 'construction' ? 'construction cleaning' : job.service_type === 'commercial' ? 'commercial cleaning' : 'house cleaning')}+${encCity}`;
