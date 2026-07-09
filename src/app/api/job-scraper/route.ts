@@ -9,6 +9,8 @@ interface ScrapedJob {
   description: string;
   service_type: 'residential' | 'commercial' | 'construction';
   source: 'simplyhired' | 'kijiji' | 'indeed' | 'housekeeper' | 'google_jobs' | 'facebook';
+  /** True only when url points at a specific listing/apply page (not a search/category page). */
+  has_live_link: boolean;
 }
 
 /**
@@ -20,123 +22,225 @@ const GLOBAL_MOCK_LISTINGS: ScrapedJob[] = [
     title: "Looking for Cleaner — Post-Construction Final Clean",
     pay: "$450 Flat Rate",
     location: "[City], ON",
-    url: "https://www.simplyhired.ca/search?q=cleaner+wanted",
+    url: "",
     posted: "15 mins ago",
     description: "Builder seeking a reliable cleaning crew for final detail cleaning on 3 brand-new townhouse units. Need drywall dust wiped, windows shined, and floors vacuumed/mopped before client occupancy. Reply with availability and insurance.",
     service_type: 'construction',
-    source: 'simplyhired'
+    source: 'simplyhired',
+    has_live_link: false
   },
   {
     title: "Need Commercial Cleaner for Office Building",
     pay: "$290 per visit",
     location: "[City], ON",
-    url: "https://www.kijiji.ca/b-jobs/gta/cleaning",
+    url: "",
     posted: "1 hour ago",
     description: "Seeking a reliable local commercial cleaning company for twice-weekly evening office cleans. Trash removal, dusting, vacuuming, and restrooms. 5,000 sq ft. Please message if you can take this contract.",
     service_type: 'commercial',
-    source: 'kijiji'
+    source: 'kijiji',
+    has_live_link: false
   },
   {
     title: "Cleaner Wanted — Medical Clinic Deep Sanitation",
     pay: "$380 Payout",
     location: "[City], ON",
-    url: "https://ca.indeed.com/jobs?q=cleaner+wanted",
+    url: "",
     posted: "3 hours ago",
     description: "Dental clinic hiring a contractor for specialized deep clean and sanitation. Hard floors, counters, and reception lobby. Fully insured contractors only. Looking to book this week.",
     service_type: 'commercial',
-    source: 'indeed'
+    source: 'indeed',
+    has_live_link: false
   },
   {
     title: "Need House Cleaner — 4 Bed / 3 Bath Deep Clean",
     pay: "$350 Flat Rate",
     location: "[City], ON",
-    url: "https://housekeeper.com/cleaner-jobs",
+    url: "",
     posted: "4 hours ago",
     description: "Homeowner looking for a top-tier cleaning team for a detailed spring clean. Baseboards, vents, blinds, light fixtures, and kitchen appliances. Please quote and share availability.",
     service_type: 'residential',
-    source: 'housekeeper'
+    source: 'housekeeper',
+    has_live_link: false
   },
   {
     title: "Hiring Crew — Construction Site Rough Sweep",
     pay: "$600 Payout",
     location: "[City], ON",
-    url: "https://ca.indeed.com/jobs?q=construction+cleaner+wanted",
+    url: "",
     posted: "5 hours ago",
     description: "Looking for an immediate local crew for debris removal, rough sweep, and vacuuming on a newly framed custom home. Safety boots and hard hats required on-site.",
     service_type: 'construction',
-    source: 'indeed'
+    source: 'indeed',
+    has_live_link: false
   },
   {
     title: "Looking for Cleaner — Post-Renovation Kitchen & Bath",
     pay: "$220 Flat Rate",
     location: "[City], ON",
-    url: "https://www.kijiji.ca/b-jobs/gta/cleaning",
+    url: "",
     posted: "7 hours ago",
     description: "Need someone for post-renovation cleaning of a kitchen and master bathroom. Must wipe inside cabinets, polish stainless steel, and remove fine dust from baseboards. Message if available this weekend.",
     service_type: 'construction',
-    source: 'kijiji'
+    source: 'kijiji',
+    has_live_link: false
   },
   {
     title: "Cleaner Needed — Move-Out Clean 3 Bed / 2 Bath",
     pay: "$250 Flat Rate",
     location: "[City], ON",
-    url: "https://www.simplyhired.ca/search?q=move+out+cleaner+wanted",
+    url: "",
     posted: "1 day ago",
     description: "End of lease cleaning needed. House is empty. Needs thorough appliance cleaning (fridge, oven), inside cabinets, baseboards, and window tracks. Looking to hire ASAP.",
     service_type: 'residential',
-    source: 'simplyhired'
+    source: 'simplyhired',
+    has_live_link: false
   },
   {
     title: "Seeking Weekly House Cleaner — 2 Bed / 1.5 Bath",
     pay: "$150 per visit",
     location: "[City], ON",
-    url: "https://housekeeper.com/cleaner-jobs",
+    url: "",
     posted: "2 days ago",
     description: "Looking for a reliable cleaner for weekly residential maintenance. Dusting, vacuuming, mopping, bathroom sanitization, and kitchen counters. Ongoing schedule preferred.",
     service_type: 'residential',
-    source: 'housekeeper'
+    source: 'housekeeper',
+    has_live_link: false
   },
   {
     title: "Need Cleaning Team — Warehouse Floor Scrubbing",
     pay: "$750 Flat Rate",
     location: "[City], ON",
-    url: "https://ca.indeed.com/jobs?q=janitorial+wanted",
+    url: "",
     posted: "3 days ago",
     description: "Looking for an experienced commercial cleaning team with an auto-scrubber to clean and degrease 15,000 sq ft warehouse floors. Insurance and safety certificates mandatory.",
     service_type: 'commercial',
-    source: 'indeed'
+    source: 'indeed',
+    has_live_link: false
   },
   {
     title: "Looking for Cleaner — Airbnb Turnover Condo",
     pay: "$120 per turnover",
     location: "[City], ON",
-    url: "https://housekeeper.com/cleaner-jobs",
+    url: "",
     posted: "3 days ago",
     description: "Need a fast-turnaround cleaner for Airbnb checkouts. Dusting, bathroom sanitization, kitchen prep, and linen change. Must be available between 11 AM and 3 PM on checkout days.",
     service_type: 'residential',
-    source: 'housekeeper'
+    source: 'housekeeper',
+    has_live_link: false
   },
   {
     title: "Hiring Cleaners — New Townhouse Block Final Clean",
     pay: "$1,800 Payout",
     location: "[City], ON",
-    url: "https://www.kijiji.ca/b-jobs/gta/cleaning",
+    url: "",
     posted: "4 days ago",
     description: "Sourcing a professional crew to clean a block of 4 newly built townhomes. Final detail cleaning of windows, woodwork, appliances, and bathrooms. Prompt payment upon sign-off.",
     service_type: 'construction',
-    source: 'kijiji'
+    source: 'kijiji',
+    has_live_link: false
   },
   {
     title: "Need Deep Clean Before Listing — 3 Story Home",
     pay: "$550 Flat Rate",
     location: "[City], ON",
-    url: "https://www.simplyhired.ca/search?q=house+cleaner+wanted",
+    url: "",
     posted: "5 days ago",
     description: "Homeowner seeking a full deep clean before listing. Carpets, kitchen, windows inside and out, and all surfaces polished. High quality standards expected — please reply with quote.",
     service_type: 'residential',
-    source: 'simplyhired'
+    source: 'simplyhired',
+    has_live_link: false
   }
 ];
+
+/** Prefer employer/board apply links over Google Jobs search wrappers. */
+function pickGoogleJobsUrl(job: {
+  apply_options?: { title?: string; link?: string }[];
+  share_link?: string;
+}): { url: string; has_live_link: boolean } {
+  const applyLinks = (job.apply_options || [])
+    .map((o) => o.link)
+    .filter((link): link is string => !!link && /^https?:\/\//i.test(link));
+
+  // Prefer direct board/employer pages over aggregators when possible
+  const preferredHost = applyLinks.find((link) =>
+    /indeed\.|kijiji\.|simplyhired\.|housekeeper\.|linkedin\.|ziprecruiter\.|talent\.com|workopolis\.|glassdoor\./i.test(link)
+  );
+  if (preferredHost) {
+    return { url: preferredHost, has_live_link: true };
+  }
+  if (applyLinks[0]) {
+    return { url: applyLinks[0], has_live_link: true };
+  }
+  if (job.share_link && /^https?:\/\//i.test(job.share_link)) {
+    // Google Jobs detail deep-link — usable, but not the original board listing
+    return { url: job.share_link, has_live_link: true };
+  }
+  return { url: '', has_live_link: false };
+}
+
+/**
+ * True when URL is a specific listing/apply page, not a search or category index.
+ */
+function isLiveListingUrl(url: string, source?: string): boolean {
+  if (!url || !/^https?:\/\//i.test(url)) return false;
+
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const path = parsed.pathname.toLowerCase();
+    const full = `${path}?${parsed.search}`.toLowerCase();
+
+    // Explicit search / category patterns
+    if (
+      full.includes('/search?') ||
+      full.includes('/search/') ||
+      path.includes('/b-search') ||
+      path.includes('/b-jobs/') ||
+      path.includes('/b-cleaning') ||
+      path.includes('/cleaner-jobs') ||
+      path.endsWith('/jobs') ||
+      path.endsWith('/jobs/') ||
+      /\/c\d+l\d+/.test(path) // Kijiji category codes like c146l1700277
+    ) {
+      // Kijiji individual ads use /v-...
+      if (host.includes('kijiji.') && path.includes('/v-')) {
+        return true;
+      }
+      return false;
+    }
+
+    if (host.includes('kijiji.')) {
+      return path.includes('/v-') && /\/\d{6,}/.test(path);
+    }
+    if (host.includes('indeed.')) {
+      return full.includes('viewjob') || full.includes('jk=') || path.includes('/rc/clk') || path.includes('/pagead/');
+    }
+    if (host.includes('simplyhired.')) {
+      return path.includes('/job/') || path.includes('/viewjob');
+    }
+    if (host.includes('housekeeper.')) {
+      return path.includes('/gigs/') || path.includes('/job/') || path.includes('/listing/');
+    }
+    if (host.includes('facebook.')) {
+      return path.includes('/groups/') || path.includes('/posts/') || path.includes('/permalink');
+    }
+    if (host.includes('google.')) {
+      // Accept Google Jobs detail deep-links that include a specific doc id
+      return full.includes('ibp=htl;jobs') && full.includes('htidocid=');
+    }
+    if (host.includes('linkedin.') || host.includes('ziprecruiter.') || host.includes('talent.com')) {
+      return path.includes('/job') || path.includes('/jobs/') || full.includes('jid=');
+    }
+
+    // Unknown host: accept if it doesn't look like a bare search page
+    if (source === 'facebook' || source === 'kijiji') {
+      return path.length > 8;
+    }
+    return path.split('/').filter(Boolean).length >= 2;
+  } catch {
+    return false;
+  }
+}
 
 function getCategory(desc: string): 'construction' | 'commercial' | 'residential' {
   const lower = desc.toLowerCase();
@@ -334,15 +438,20 @@ export async function POST(request: Request) {
             const mapped: ScrapedJob[] = rawJobs.map((j): ScrapedJob => {
               const desc = j.description || '';
               const cat = getCategory(`${j.title || ''} ${desc}`);
+              const rawUrl = j.url
+                ? (j.url.startsWith('http') ? j.url : `${target.domain}${j.url}`)
+                : '';
+              const live = isLiveListingUrl(rawUrl, target.name);
               return {
                 title: j.title || 'Cleaning Help Requested',
                 pay: j.pay || (cat === 'construction' ? '$450 Payout' : cat === 'commercial' ? '$290 per visit' : '$200 Flat Rate'),
                 location: j.location || `${capitalizedCity}, ON`,
-                url: j.url.startsWith('http') ? j.url : `${target.domain}${j.url}`,
+                url: live ? rawUrl : '',
                 posted: j.posted || 'Just posted',
                 description: desc || 'No description provided.',
                 service_type: cat,
-                source: target.name
+                source: target.name,
+                has_live_link: live
               };
             });
 
@@ -370,6 +479,8 @@ export async function POST(request: Request) {
             location?: string;
             description?: string;
             share_link?: string;
+            via?: string;
+            apply_options?: { title?: string; link?: string }[];
             detected_extensions?: {
               posted_at?: string;
               salary?: string;
@@ -379,19 +490,32 @@ export async function POST(request: Request) {
           const mapped: ScrapedJob[] = results.slice(0, 12).map((j: SerpJob): ScrapedJob => {
             const desc = j.description || '';
             const cat = getCategory(`${j.title || ''} ${desc}`);
+            const { url: listingUrl, has_live_link } = pickGoogleJobsUrl(j);
+
+            // Infer board source from apply URL when possible
+            let source: ScrapedJob['source'] = 'google_jobs';
+            if (/kijiji\./i.test(listingUrl)) source = 'kijiji';
+            else if (/indeed\./i.test(listingUrl)) source = 'indeed';
+            else if (/simplyhired\./i.test(listingUrl)) source = 'simplyhired';
+            else if (/housekeeper\./i.test(listingUrl)) source = 'housekeeper';
+
             return {
               title: j.title || 'Cleaner Wanted',
               pay: j.detected_extensions?.salary || (cat === 'construction' ? '$450 Payout' : cat === 'commercial' ? '$290 per visit' : '$200 Flat Rate'),
               location: j.location || `${capitalizedCity}, ON`,
-              url: j.share_link || `https://google.com/search?q=${encodeURIComponent(j.title || 'cleaner wanted')}`,
+              url: listingUrl,
               posted: j.detected_extensions?.posted_at || 'Just posted',
               description: desc || 'No description provided.',
               service_type: cat,
-              source: 'google_jobs' as const
+              source,
+              has_live_link
             };
           });
 
-          return mapped.filter((job) => !shouldExcludeListing(job.title, job.description));
+          // Only keep jobs that have a real listing/apply URL
+          return mapped.filter(
+            (job) => job.has_live_link && !shouldExcludeListing(job.title, job.description)
+          );
         })()
       });
 
@@ -399,7 +523,7 @@ export async function POST(request: Request) {
         name: 'SerpApi (Kijiji hire requests)',
         promise: (async () => {
           // Search Kijiji for hire-intent posts; avoid services-category vendor ads
-          const query = `site:kijiji.ca ("looking for a cleaner" OR "need a cleaner" OR "cleaner wanted" OR "need cleaning" OR "hiring cleaner") "${capitalizedCity}" -"we offer" -"i offer" -"book now"`;
+          const query = `site:kijiji.ca/v- ("looking for a cleaner" OR "need a cleaner" OR "cleaner wanted" OR "need cleaning" OR "hiring cleaner") "${capitalizedCity}" -"we offer" -"i offer" -"book now"`;
           const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&hl=en&gl=ca&api_key=${serpapiApiKey}`;
 
           const res = await fetch(url);
@@ -417,19 +541,24 @@ export async function POST(request: Request) {
           const mapped: ScrapedJob[] = results.slice(0, 10).map((r: OrganicResult): ScrapedJob => {
             const desc = r.snippet || '';
             const cat = getCategory(`${r.title || ''} ${desc}`);
+            const link = r.link || '';
+            const live = isLiveListingUrl(link, 'kijiji');
             return {
               title: r.title || 'Kijiji Cleaner Request',
               pay: cat === 'construction' ? '$450 Payout' : cat === 'commercial' ? '$290 per visit' : '$200 Flat Rate',
               location: `${capitalizedCity}, ON`,
-              url: r.link || 'https://www.kijiji.ca',
+              url: live ? link : '',
               posted: r.date || 'Just posted',
               description: desc || 'Hire request posted on Kijiji.',
               service_type: cat,
-              source: 'kijiji' as const
+              source: 'kijiji' as const,
+              has_live_link: live
             };
           });
 
-          return mapped.filter((job) => !shouldExcludeListing(job.title, job.description));
+          return mapped.filter(
+            (job) => job.has_live_link && !shouldExcludeListing(job.title, job.description)
+          );
         })()
       });
 
@@ -454,19 +583,24 @@ export async function POST(request: Request) {
           const mapped: ScrapedJob[] = results.slice(0, 8).map((r: OrganicResult): ScrapedJob => {
             const desc = r.snippet || '';
             const cat = getCategory(`${r.title || ''} ${desc}`);
+            const link = r.link || '';
+            const live = isLiveListingUrl(link, 'facebook');
             return {
               title: r.title?.replace(' | Facebook', '') || 'Facebook Cleaner Request',
               pay: cat === 'construction' ? '$450 Payout' : cat === 'commercial' ? '$290 per visit' : '$200 Flat Rate',
               location: `${capitalizedCity}, ON`,
-              url: r.link || 'https://facebook.com',
+              url: live ? link : '',
               posted: r.date || 'Just posted',
               description: desc || 'Post in public Facebook group requesting a cleaner.',
               service_type: cat,
-              source: 'facebook' as const
+              source: 'facebook' as const,
+              has_live_link: live
             };
           });
 
-          return mapped.filter((job) => !shouldExcludeListing(job.title, job.description));
+          return mapped.filter(
+            (job) => job.has_live_link && !shouldExcludeListing(job.title, job.description)
+          );
         })()
       });
     }
@@ -486,14 +620,27 @@ export async function POST(request: Request) {
       });
     }
 
-    // Final pass: demand-only filter on the combined set
-    const demandOnlyJobs = allJobs.filter((job) => !shouldExcludeListing(job.title, job.description));
+    // Final pass: demand-only + re-validate live listing URLs
+    const demandOnlyJobs = allJobs
+      .filter((job) => !shouldExcludeListing(job.title, job.description))
+      .map((job) => {
+        const live = job.has_live_link && isLiveListingUrl(job.url, job.source);
+        return {
+          ...job,
+          url: live ? job.url : '',
+          has_live_link: live
+        };
+      });
 
-    if (demandOnlyJobs.length > 0) {
-      let filteredJobs = demandOnlyJobs;
+    // Prefer results that have a real listing link; keep others only if nothing live exists
+    const withLiveLinks = demandOnlyJobs.filter((job) => job.has_live_link);
+    const rankedJobs = withLiveLinks.length > 0 ? withLiveLinks : demandOnlyJobs;
+
+    if (rankedJobs.length > 0) {
+      let filteredJobs = rankedJobs;
       if (targetCity) {
         const lowerCity = targetCity.toLowerCase();
-        const cityMatched = demandOnlyJobs.filter(
+        const cityMatched = rankedJobs.filter(
           (job) =>
             job.location.toLowerCase().includes(lowerCity) ||
             job.title.toLowerCase().includes(lowerCity) ||
@@ -509,41 +656,21 @@ export async function POST(request: Request) {
         scraped: true,
         hasKey: true,
         intent: 'hire_requests_only',
+        liveLinkCount: filteredJobs.filter((j) => j.has_live_link).length,
         jobs: filteredJobs,
         scrapeErrors: errors.length > 0 ? errors : null
       });
     }
 
-    // Fallback mocks — already demand-side wording
-    const customizedJobs: ScrapedJob[] = GLOBAL_MOCK_LISTINGS.map((job) => {
-      const encCity = encodeURIComponent(capitalizedCity);
-      let realUrl = '';
-
-      switch (job.source) {
-        case 'simplyhired':
-          realUrl = `https://www.simplyhired.ca/search?q=${encodeURIComponent('cleaner wanted')}&l=${encCity}%2C+ON`;
-          break;
-        case 'kijiji':
-          realUrl = `https://www.kijiji.ca/b-jobs/gta/${encodeURIComponent('cleaner wanted')}/k0c54l1700272`;
-          break;
-        case 'indeed':
-          realUrl = `https://ca.indeed.com/jobs?q=${encodeURIComponent('cleaner wanted')}&l=${encCity}%2C+ON`;
-          break;
-        case 'housekeeper':
-          realUrl = 'https://housekeeper.com/cleaner-jobs';
-          break;
-        default:
-          realUrl = 'https://toronto.craigslist.org/search/jjj?query=cleaner+wanted';
-      }
-
-      return {
-        ...job,
-        location: job.location.replace(/\[City\]/g, capitalizedCity),
-        title: job.title.replace(/\[City\]/g, capitalizedCity),
-        description: job.description.replace(/\[City\]/g, capitalizedCity),
-        url: realUrl
-      };
-    });
+    // Fallback mocks — demand-side wording only; no fake search-page links
+    const customizedJobs: ScrapedJob[] = GLOBAL_MOCK_LISTINGS.map((job) => ({
+      ...job,
+      location: job.location.replace(/\[City\]/g, capitalizedCity),
+      title: job.title.replace(/\[City\]/g, capitalizedCity),
+      description: job.description.replace(/\[City\]/g, capitalizedCity),
+      url: '',
+      has_live_link: false
+    }));
 
     const activeKeysSnippet = {
       firecrawl: hasFirecrawl ? `${firecrawlApiKey!.substring(0, 5)}...` : null,

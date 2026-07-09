@@ -81,6 +81,8 @@ interface ScrapedJob {
   description: string;
   service_type: 'residential' | 'commercial' | 'construction';
   source?: 'craigslist' | 'kijiji' | 'indeed' | 'housekeeper' | 'simplyhired' | 'google_jobs' | 'facebook';
+  /** Only true when url is a real listing/apply page (not a search index). */
+  has_live_link?: boolean;
 }
 
 interface DispatchRun {
@@ -1224,15 +1226,24 @@ export default function Dashboard() {
                               <span className="text-sm font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-3 py-1.5 rounded-lg">
                                 {job.pay}
                               </span>
-                              <a 
-                                href={job.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="p-2 bg-neutral-800 hover:bg-neutral-750 text-neutral-300 rounded-lg border border-neutral-700 transition-all"
-                                title="Open Original Ad"
-                              >
-                                <ExternalLink size={14} />
-                              </a>
+                              {(job.has_live_link && job.url) ? (
+                                <a 
+                                  href={job.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="p-2 bg-neutral-800 hover:bg-neutral-750 text-neutral-300 rounded-lg border border-neutral-700 transition-all"
+                                  title="Open Original Listing"
+                                >
+                                  <ExternalLink size={14} />
+                                </a>
+                              ) : (
+                                <span
+                                  className="p-2 bg-neutral-950 text-neutral-600 rounded-lg border border-neutral-800 cursor-not-allowed"
+                                  title="No direct listing URL available for this result"
+                                >
+                                  <ExternalLink size={14} />
+                                </span>
+                              )}
                             </div>
                           </div>
 
