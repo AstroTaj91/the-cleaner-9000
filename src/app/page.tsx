@@ -26,7 +26,8 @@ import {
   VolumeX,
   Plus,
   Trash2,
-  BookOpen
+  BookOpen,
+  Copy
 } from 'lucide-react';
 
 interface Competitor {
@@ -79,7 +80,7 @@ interface ScrapedJob {
   posted: string;
   description: string;
   service_type: 'residential' | 'commercial' | 'construction';
-  source?: 'craigslist' | 'kijiji' | 'indeed' | 'housekeeper' | 'simplyhired';
+  source?: 'craigslist' | 'kijiji' | 'indeed' | 'housekeeper' | 'simplyhired' | 'google_jobs' | 'facebook';
 }
 
 interface DispatchRun {
@@ -178,6 +179,15 @@ export default function Dashboard() {
   const [scraperLoading, setScraperLoading] = useState(false);
   const [scraperCity, setScraperCity] = useState('Oakville');
   const [scraperError, setScraperError] = useState('');
+  const [proposals, setProposals] = useState<Record<number, {
+    proposal: string;
+    recommended_wholesale_payout: number;
+    margin_analysis: string;
+    strategy_tips: string[];
+    loading?: boolean;
+    error?: string;
+    copied?: boolean;
+  }>>({});
 
   // GBP States
   const [gbpListings, setGbpListings] = useState<GbpListing[]>([]);
@@ -408,6 +418,7 @@ export default function Dashboard() {
     setScraperLoading(true);
     setScraperError('');
     setScrapedJobs([]);
+    setProposals({});
 
     try {
       const res = await fetch('/api/job-scraper', {
@@ -428,6 +439,87 @@ export default function Dashboard() {
     } finally {
       setScraperLoading(false);
     }
+  };
+
+  const handleGenerateProposal = async (job: ScrapedJob, idx: number) => {
+    setProposals((prev) => ({
+      ...prev,
+      [idx]: {
+        proposal: '',
+        recommended_wholesale_payout: 0,
+        margin_analysis: '',
+        strategy_tips: [],
+        loading: true
+      }
+    }));
+
+    try {
+      const res = await fetch('/api/job-scraper/proposal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: job.title,
+          description: job.description,
+          location: job.location,
+          pay: job.pay,
+          service_type: job.service_type,
+          source: job.source
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to generate proposal (HTTP ${res.status})`);
+      }
+
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'API returned success=false');
+      }
+
+      setProposals((prev) => ({
+        ...prev,
+        [idx]: {
+          proposal: data.proposal,
+          recommended_wholesale_payout: data.recommended_wholesale_payout,
+          margin_analysis: data.margin_analysis,
+          strategy_tips: data.strategy_tips,
+          loading: false
+        }
+      }));
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      setProposals((prev) => ({
+        ...prev,
+        [idx]: {
+          proposal: '',
+          recommended_wholesale_payout: 0,
+          margin_analysis: '',
+          strategy_tips: [],
+          loading: false,
+          error: errMsg
+        }
+      }));
+    }
+  };
+
+  const handleCopyProposal = (idx: number, text: string) => {
+    navigator.clipboard.writeText(text);
+    setProposals((prev) => ({
+      ...prev,
+      [idx]: {
+        ...prev[idx],
+        copied: true
+      }
+    }));
+    setTimeout(() => {
+      setProposals((prev) => ({
+        ...prev,
+        [idx]: {
+          ...prev[idx],
+          copied: false
+        }
+      }));
+    }, 2000);
   };
 
   const handleImportJob = (job: ScrapedJob) => {
@@ -1046,7 +1138,7 @@ export default function Dashboard() {
                     className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-sm font-semibold rounded-xl text-white shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center space-x-2"
                   >
                     <RefreshCw size={16} className={scraperLoading ? 'animate-spin' : ''} />
-                    <span>{scraperLoading ? 'Scanning GTA Cleaning Gigs...' : 'Scan GTA Cleaning Gigs'}</span>
+                    <span>{scraperLoading ? 'Scanning for Hire Requests...' : 'Scan Hire Requests'}</span>
                   </button>
                 </form>
 
@@ -1061,16 +1153,16 @@ export default function Dashboard() {
               {/* SCRAPED JOBS LIST */}
               <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
                 <div className="p-6 border-b border-neutral-800">
-                  <h3 className="font-semibold text-base text-neutral-100">Scraped Cleaning Gigs & Contracts</h3>
-                  <p className="text-xs text-neutral-400 mt-0.5">Scraped cleaning jobs and contracts from across Kijiji, Housekeeper.com, and SimplyHired. Review details and import to book.</p>
+                  <h3 className="font-semibold text-base text-neutral-100">Hire Requests — People Looking for Cleaners</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">Demand-side posts only: homeowners and businesses requesting cleaning help. Vendor ads offering services are filtered out.</p>
                 </div>
 
                 <div className="p-6">
                   {scrapedJobs.length === 0 ? (
                     <div className="py-12 text-center">
                       <Search className="mx-auto text-neutral-600 mb-3" size={36} />
-                      <h4 className="text-sm font-semibold text-neutral-300">No scraped results found</h4>
-                      <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">Enter a target city above, then click Scan to pull cleaning contracts from Kijiji, Housekeeper.com, and SimplyHired.</p>
+                      <h4 className="text-sm font-semibold text-neutral-300">No hire requests found</h4>
+                      <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">Enter a target city above, then click Scan to find posts from people looking to hire a cleaner (not service ads).</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-6">
@@ -1098,9 +1190,19 @@ export default function Dashboard() {
                                       ? 'bg-sky-500/10 text-sky-400 border-sky-500/20'
                                       : job.source === 'simplyhired'
                                       ? 'bg-pink-500/10 text-pink-400 border-pink-500/20'
+                                      : job.source === 'google_jobs'
+                                      ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                      : job.source === 'facebook'
+                                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
                                       : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                   }`}>
-                                    {job.source === 'simplyhired' ? 'SimplyHired' : job.source.charAt(0).toUpperCase() + job.source.slice(1)}
+                                    {job.source === 'simplyhired' 
+                                      ? 'SimplyHired' 
+                                      : job.source === 'google_jobs' 
+                                      ? 'Google Jobs' 
+                                      : job.source === 'facebook' 
+                                      ? 'Facebook Groups' 
+                                      : job.source.charAt(0).toUpperCase() + job.source.slice(1)}
                                   </span>
                                 )}
                               </div>
@@ -1138,7 +1240,100 @@ export default function Dashboard() {
                             {job.description}
                           </p>
 
-                          <div className="flex justify-end pt-1">
+                          {/* AI PROPOSAL INTEL PANEL */}
+                          {proposals[idx] && (
+                            <div className="bg-neutral-900/60 border border-neutral-800 rounded-xl p-4 space-y-4 animate-fadeIn text-left">
+                              {proposals[idx].loading ? (
+                                <div className="flex items-center space-x-2 text-xs text-neutral-400 py-2">
+                                  <RefreshCw size={14} className="animate-spin text-indigo-400" />
+                                  <span>Bidding strategist formulating response and pricing plan...</span>
+                                </div>
+                              ) : proposals[idx].error ? (
+                                <div className="text-xs text-rose-400 p-2.5 bg-rose-500/5 rounded border border-rose-500/10 flex items-center space-x-2">
+                                  <XCircle size={14} />
+                                  <span>{proposals[idx].error}</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-4 divide-y divide-neutral-800">
+                                  {/* Response Draft */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs pb-1">
+                                      <span className="text-neutral-300 font-semibold flex items-center space-x-1.5">
+                                        <Sparkles size={12} className="text-indigo-400" />
+                                        <span>AI Pitch Response Draft</span>
+                                      </span>
+                                      <button
+                                        onClick={() => handleCopyProposal(idx, proposals[idx].proposal)}
+                                        className="flex items-center space-x-1 px-2.5 py-1 bg-neutral-800 hover:bg-neutral-750 text-[10px] text-neutral-300 rounded border border-neutral-800 transition-all"
+                                      >
+                                        <Copy size={10} />
+                                        <span>{proposals[idx].copied ? 'Copied!' : 'Copy Pitch'}</span>
+                                      </button>
+                                    </div>
+                                    <p className="text-xs text-neutral-300 leading-relaxed font-sans bg-neutral-950/60 p-3.5 rounded border border-neutral-900 select-all whitespace-pre-line">
+                                      {proposals[idx].proposal}
+                                    </p>
+                                  </div>
+
+                                  {/* Arbitrage Calculations & Strategy Tips */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-neutral-800">
+                                    <div className="space-y-2.5">
+                                      <span className="text-xs text-neutral-300 font-semibold block">Arbitrage Estimator</span>
+                                      <div className="bg-neutral-950/40 border border-neutral-900 rounded-lg p-3 space-y-2 text-xs">
+                                        <div className="flex justify-between">
+                                          <span className="text-neutral-500 font-medium">Retail Revenue:</span>
+                                          <span className="font-semibold text-neutral-200">{job.pay}</span>
+                                        </div>
+                                        <div className="flex justify-between border-b border-neutral-900 pb-1.5">
+                                          <span className="text-neutral-500 font-medium">Suggested Payout:</span>
+                                          <span className="font-semibold text-indigo-400">${proposals[idx].recommended_wholesale_payout} wholesale</span>
+                                        </div>
+                                        {(() => {
+                                          let retailVal = 0;
+                                          const match = job.pay.match(/\$?(\d+)/);
+                                          if (match) retailVal = parseInt(match[1], 10);
+                                          const profit = retailVal - proposals[idx].recommended_wholesale_payout;
+                                          const marginPct = retailVal > 0 ? Math.round((profit / retailVal) * 100) : 40;
+
+                                          return (
+                                            <>
+                                              <div className="flex justify-between font-bold">
+                                                <span className="text-neutral-300">Net Margin:</span>
+                                                <span className="text-emerald-400">${profit} ({marginPct}%)</span>
+                                              </div>
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
+                                      <p className="text-[10px] text-neutral-500 italic leading-normal">
+                                        {proposals[idx].margin_analysis}
+                                      </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <span className="text-xs text-neutral-300 font-semibold block">Strategist Bidding Checklist</span>
+                                      <ul className="space-y-1.5 text-xs text-neutral-450 list-disc list-inside">
+                                        {proposals[idx].strategy_tips.map((tip, tIdx) => (
+                                          <li key={tIdx} className="leading-relaxed">{tip}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex justify-end items-center space-x-3 pt-1">
+                            {!proposals[idx] && (
+                              <button
+                                onClick={() => handleGenerateProposal(job, idx)}
+                                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold rounded-lg text-neutral-300 border border-neutral-800 transition-all flex items-center space-x-1.5"
+                              >
+                                <Sparkles size={14} className="text-indigo-400" />
+                                <span>Analyze & Generate Proposal</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => handleImportJob(job)}
                               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold rounded-lg text-white shadow-md shadow-indigo-600/10 transition-all flex items-center space-x-1.5"

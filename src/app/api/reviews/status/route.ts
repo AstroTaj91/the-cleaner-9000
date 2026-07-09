@@ -50,12 +50,12 @@ export async function GET() {
           id,
           job_id,
           status,
-          sms_sent_at,
+          sent_at,
           created_at,
           jobs (
             city,
             customers (
-              first_name,
+              name,
               phone
             )
           )
@@ -68,7 +68,7 @@ export async function GET() {
 
       if (data) {
         interface CustomerJoin {
-          first_name?: string;
+          name?: string;
           phone?: string;
         }
         interface JobJoin {
@@ -79,7 +79,7 @@ export async function GET() {
           id: string;
           job_id: string;
           status: string;
-          sms_sent_at: string | null;
+          sent_at: string | null;
           created_at: string;
           jobs?: JobJoin | null;
         }
@@ -89,7 +89,7 @@ export async function GET() {
           const customerData = jobData?.customers;
           
           const city = jobData?.city || 'Oakville';
-          const customerName = customerData?.first_name || 'Valued Customer';
+          const customerName = customerData?.name || 'Valued Customer';
           const customerPhone = customerData?.phone || '+14165550199';
           
           // Reconstruct the message body that was sent (or pending to send)
@@ -104,7 +104,7 @@ export async function GET() {
             customer_phone: customerPhone,
             city,
             status: item.status,
-            sms_sent_at: item.sms_sent_at || item.created_at,
+            sms_sent_at: item.sent_at || item.created_at,
             sms_body: smsBody
           };
         });
