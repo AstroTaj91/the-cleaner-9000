@@ -180,6 +180,7 @@ export default function Dashboard() {
   const [scrapedJobs, setScrapedJobs] = useState<ScrapedJob[]>([]);
   const [scraperLoading, setScraperLoading] = useState(false);
   const [scraperCity, setScraperCity] = useState('Oakville');
+  const [scraperWide, setScraperWide] = useState(true);
   const [scraperError, setScraperError] = useState('');
   const [proposals, setProposals] = useState<Record<number, {
     proposal: string;
@@ -426,7 +427,7 @@ export default function Dashboard() {
       const res = await fetch('/api/job-scraper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: scraperCity })
+        body: JSON.stringify({ city: scraperCity, wide: scraperWide })
       });
 
       if (!res.ok) {
@@ -1134,6 +1135,19 @@ export default function Dashboard() {
                     </div>
                   </div>
 
+                  <label
+                    className="flex items-center gap-2 select-none cursor-pointer bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-neutral-300 hover:border-neutral-700 transition-all"
+                    title="Also scan neighbouring GTA cities for more leads"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={scraperWide}
+                      onChange={(e) => setScraperWide(e.target.checked)}
+                      className="accent-indigo-500 w-4 h-4"
+                    />
+                    <span>Include nearby GTA cities</span>
+                  </label>
+
                   <button 
                     type="submit" 
                     disabled={scraperLoading}
@@ -1223,8 +1237,12 @@ export default function Dashboard() {
                             </div>
 
                             <div className="flex items-center space-x-3 self-start md:self-auto">
-                              <span className="text-sm font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-3 py-1.5 rounded-lg">
-                                {job.pay}
+                              <span className={`text-sm font-bold px-3 py-1.5 rounded-lg border ${
+                                job.pay
+                                  ? 'text-emerald-400 bg-emerald-500/5 border-emerald-500/10'
+                                  : 'text-neutral-500 bg-neutral-800/40 border-neutral-800'
+                              }`}>
+                                {job.pay || 'Pay not listed'}
                               </span>
                               {(job.has_live_link && job.url) ? (
                                 <a 
@@ -1232,7 +1250,7 @@ export default function Dashboard() {
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   className="p-2 bg-neutral-800 hover:bg-neutral-750 text-neutral-300 rounded-lg border border-neutral-700 transition-all"
-                                  title="Open Original Listing"
+                                  title={job.source === 'facebook' ? 'Open post in Facebook (you must be logged in / a group member)' : 'Open original listing'}
                                 >
                                   <ExternalLink size={14} />
                                 </a>
