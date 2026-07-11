@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Apply the Velch Threshold Rule:
+    // Apply the Deep Cleaners Threshold Rule:
     // A market is winnable (GO) if at least 2 of the top 3 ranking businesses have fewer than 100 reviews.
     const weakCompetitors = competitors.filter(c => c.reviewCount < 100).length;
     const isWinnable = weakCompetitors >= 2;

@@ -20,19 +20,19 @@ const SAMPLE_JOBS: ScrapedJob[] = [
     title: 'Looking for Cleaner — Post-Construction Final Clean',
     pay: '', location: '[City], ON', url: '', posted: 'Sample',
     description: 'Builder seeking a reliable crew for final detail cleaning on 3 new townhouse units. Drywall dust, windows, and floors before occupancy.',
-    service_type: 'construction', source: 'kijiji', has_live_link: false
+    service_type: 'construction', source: 'kijiji', has_live_link: false, phone: ''
   },
   {
     title: 'Need House Cleaner — 4 Bed / 3 Bath Deep Clean',
     pay: '', location: '[City], ON', url: '', posted: 'Sample',
     description: 'Homeowner looking for a top-tier team for a detailed spring clean. Baseboards, vents, blinds, light fixtures, and kitchen appliances.',
-    service_type: 'residential', source: 'kijiji', has_live_link: false
+    service_type: 'residential', source: 'kijiji', has_live_link: false, phone: ''
   },
   {
     title: 'Cleaner Needed — Move-Out Clean 3 Bed / 2 Bath',
     pay: '', location: '[City], ON', url: '', posted: 'Sample',
     description: 'End of lease cleaning needed. Empty house. Appliance cleaning (fridge, oven), inside cabinets, baseboards, and window tracks.',
-    service_type: 'residential', source: 'kijiji', has_live_link: false
+    service_type: 'residential', source: 'kijiji', has_live_link: false, phone: ''
   }
 ];
 
@@ -105,7 +105,8 @@ export async function POST(request: Request) {
           description: j.description,
           service_type: j.service_type,
           source: j.source,
-          has_live_link: true
+          has_live_link: true,
+          phone: j.phone || ''
         };
       })
     );

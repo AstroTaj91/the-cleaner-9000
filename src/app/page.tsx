@@ -83,6 +83,8 @@ interface ScrapedJob {
   source?: 'craigslist' | 'kijiji' | 'indeed' | 'housekeeper' | 'simplyhired' | 'google_jobs' | 'facebook';
   /** Only true when url is a real listing/apply page (not a search index). */
   has_live_link?: boolean;
+  /** Formatted contact phone parsed from the listing, when present. */
+  phone?: string;
 }
 
 interface DispatchRun {
@@ -1244,6 +1246,16 @@ export default function Dashboard() {
                               }`}>
                                 {job.pay || 'Pay not listed'}
                               </span>
+                              {job.phone && (
+                                <a
+                                  href={`tel:+1${job.phone.replace(/\D/g, '')}`}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg border border-emerald-500/30 transition-all"
+                                  title={`Call ${job.phone}`}
+                                >
+                                  <Phone size={13} />
+                                  <span>{job.phone}</span>
+                                </a>
+                              )}
                               {(job.has_live_link && job.url) ? (
                                 <a 
                                   href={job.url} 
@@ -2163,7 +2175,7 @@ export default function Dashboard() {
                       <h5 className="font-bold text-neutral-200 text-sm">Market Intel & Competitor Radar</h5>
                     </div>
                     <p className="text-xs text-neutral-400 leading-relaxed">
-                      Enter a GTA suburb and service keyword. The system uses the Google Places API to search the top 3 ranking businesses in that city. It applies the <strong>Velch Threshold Rule</strong>: it flags the city as a <strong>GO (Green)</strong> if at least 2 of the top 3 competitors have fewer than 100 reviews (indicating a winnable market), and <strong>NO-GO (Red)</strong> if they are saturated.
+                      Enter a GTA suburb and service keyword. The system uses the Google Places API to search the top 3 ranking businesses in that city. It applies the <strong>Deep Cleaners Threshold Rule</strong>: it flags the city as a <strong>GO (Green)</strong> if at least 2 of the top 3 competitors have fewer than 100 reviews (indicating a winnable market), and <strong>NO-GO (Red)</strong> if they are saturated.
                     </p>
                   </div>
 

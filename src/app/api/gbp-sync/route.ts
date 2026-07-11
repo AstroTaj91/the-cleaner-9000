@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-// High-fidelity mock Google Business Profiles based on Eric Velch's exact-match naming strategy
+// High-fidelity mock Google Business Profiles based on Deep Cleaners' exact-match naming strategy
 const PROFILES_TO_SYNC = [
   {
     name: "Mississauga House Cleaning Services",

@@ -20,6 +20,8 @@ export interface ScrapedJob {
   service_type: 'residential' | 'commercial' | 'construction';
   source: 'simplyhired' | 'kijiji' | 'indeed' | 'housekeeper' | 'google_jobs' | 'facebook';
   has_live_link: boolean;
+  /** Formatted contact phone parsed from the listing text, when present. */
+  phone: string;
 }
 
 /** Internal shape carrying fallback URL candidates before liveness resolution. */
@@ -103,6 +105,18 @@ export function getCategory(text: string): ScrapedJob['service_type'] {
     return 'commercial';
   }
   return 'residential';
+}
+
+/**
+ * Extract a North-American phone number from free text. Requires separators
+ * between digit groups so contiguous IDs (e.g. Kijiji ad ids) never match.
+ * Returns a formatted "(905) 555-1234" string, or '' if none found.
+ */
+export function extractPhone(text: string): string {
+  if (!text) return '';
+  const m = text.match(/(?:\+?1[\s.\-]?)?\(?([2-9]\d{2})\)?[\s.\-]([2-9]\d{2})[\s.\-](\d{4})/);
+  if (!m) return '';
+  return `(${m[1]}) ${m[2]}-${m[3]}`;
 }
 
 /** Extract a real GTA location from free text; empty string if none found. */
@@ -291,6 +305,7 @@ export async function scrapeGoogleJobs(primaryCity: string, key: string): Promis
       description: desc || 'No description provided.',
       service_type: getCategory(`${j.title} ${desc}`),
       source: 'google_jobs',
+      phone: extractPhone(`${j.title} ${desc}`),
       candidates: [j.share_link || '', ...applyLinks].filter(Boolean)
     };
   });
@@ -313,6 +328,7 @@ export async function scrapeKijiji(cities: string[], key: string): Promise<RawJo
       description: desc || 'Hire request posted on Kijiji.',
       service_type: getCategory(`${r.title} ${desc}`),
       source: 'kijiji',
+      phone: extractPhone(`${r.title} ${desc}`),
       candidates: [r.link || '']
     };
   });
@@ -335,6 +351,7 @@ export async function scrapeFacebookOrganic(cities: string[], key: string): Prom
       description: desc || 'Public Facebook group post requesting a cleaner.',
       service_type: getCategory(`${r.title} ${desc}`),
       source: 'facebook',
+      phone: extractPhone(`${r.title} ${desc}`),
       candidates: [r.link || '']
     };
   });
@@ -409,6 +426,7 @@ export async function scrapeApifyIndeed(primaryCity: string, token: string, acto
         description: desc || 'Cleaning role posted on Indeed.',
         service_type: getCategory(`${title} ${desc}`),
         source: 'indeed',
+        phone: extractPhone(`${title} ${desc}`),
         candidates: [url]
       };
     });
@@ -449,6 +467,7 @@ export async function scrapeApifyFacebookGroups(
         description: text.slice(0, 500) || 'Facebook group post.',
         service_type: getCategory(text),
         source: 'facebook',
+        phone: extractPhone(text),
         candidates: [url]
       };
     })

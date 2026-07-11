@@ -15,7 +15,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "THE CLEANER 9,000 - GTA Cleaning Playbook",
-  description: "Automated lead generation, competitor radar, SEO weekly posting, review blitzing, and regional dispatch operations for Eric Velch.",
+  description: "Automated lead generation, competitor radar, SEO weekly posting, review blitzing, and regional dispatch operations for Deep Cleaners.",
 };
 
 export default function RootLayout({
