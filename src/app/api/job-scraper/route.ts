@@ -9,7 +9,8 @@ import {
   scrapeKijiji,
   scrapeFacebookOrganic,
   scrapeApifyIndeed,
-  scrapeApifyFacebookGroups
+  scrapeApifyFacebookGroups,
+  DEFAULT_FB_GROUP_URLS
 } from '@/lib/scrapers';
 
 // Multi-source + link-liveness probing needs headroom beyond the 10s default.
@@ -51,10 +52,12 @@ export async function POST(request: Request) {
 
     const indeedActor = process.env.APIFY_INDEED_ACTOR || 'misceres~indeed-scraper';
     const fbActor = process.env.APIFY_FB_GROUPS_ACTOR || 'apify~facebook-groups-scraper';
-    const fbGroupUrls = (process.env.APIFY_FB_GROUP_URLS || '')
+    const envFbGroups = (process.env.APIFY_FB_GROUP_URLS || '')
       .split(/[\n,]/)
       .map((s) => s.trim())
       .filter(Boolean);
+    // Fall back to the curated GTA group list baked into the source.
+    const fbGroupUrls = envFbGroups.length > 0 ? envFbGroups : DEFAULT_FB_GROUP_URLS;
 
     const tasks: { name: string; promise: Promise<RawJob[]> }[] = [];
 

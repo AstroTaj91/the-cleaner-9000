@@ -36,6 +36,21 @@ export const GTA_CITIES = [
   'Vaughan', 'Markham', 'Richmond Hill', 'Ajax', 'Pickering', 'Whitby', 'Oshawa'
 ];
 
+/**
+ * Curated PUBLIC GTA Facebook groups that have historically surfaced
+ * demand-side "looking for a cleaner" posts. Used as the default target set
+ * for the Apify Facebook Groups actor when APIFY_FB_GROUP_URLS is not set.
+ * Override in env to tailor to specific neighbourhoods.
+ */
+export const DEFAULT_FB_GROUP_URLS = [
+  'https://www.facebook.com/groups/4506139976277690', // Cleaning jobs Toronto/Mississauga/Milton/Oakville
+  'https://www.facebook.com/groups/677423669726563',
+  'https://www.facebook.com/groups/3190898057608716',
+  'https://www.facebook.com/groups/1200050770490797',
+  'https://www.facebook.com/groups/1143800536381714',
+  'https://www.facebook.com/groups/519902495201854'
+];
+
 const GTA_PLACES = [
   'toronto', 'north york', 'scarborough', 'etobicoke', 'east york', 'york',
   'mississauga', 'brampton', 'caledon', 'oakville', 'burlington', 'milton', 'halton hills',
@@ -443,15 +458,17 @@ export async function scrapeApifyFacebookGroups(
   cities: string[]
 ): Promise<RawJob[]> {
   if (!groupUrls.length) return [];
+  // Cap groups + posts so two Apify actors (Indeed + FB) stay inside the budget.
+  const targets = groupUrls.slice(0, 6);
   const items = await runApifyActor(
     actorId,
     {
-      startUrls: groupUrls.map((u) => ({ url: u })),
-      resultsLimit: 40,
-      maxPosts: 40
+      startUrls: targets.map((u) => ({ url: u })),
+      resultsLimit: 20,
+      maxPosts: 20
     },
     token,
-    { maxItems: 60, timeoutMs: 50000 }
+    { maxItems: 60, timeoutMs: 45000 }
   );
   const cityLc = cities.map((c) => c.toLowerCase());
   return items
