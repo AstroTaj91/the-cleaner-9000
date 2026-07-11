@@ -27,7 +27,9 @@ import {
   Plus,
   Trash2,
   BookOpen,
-  Copy
+  Copy,
+  Menu,
+  X
 } from 'lucide-react';
 
 interface Competitor {
@@ -142,6 +144,11 @@ const calculateFrontendPrices = (beds: number, baths: number, isDeepClean: boole
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'home' | 'radar' | 'gbp' | 'job-radar' | 'reviews' | 'mission' | 'guide'>('home');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navTo = (tab: 'home' | 'radar' | 'gbp' | 'job-radar' | 'reviews' | 'mission' | 'guide') => {
+    setActiveTab(tab);
+    setSidebarOpen(false);
+  };
 
   // Mission Control - Softphone States
   const [phoneStatus, setPhoneStatus] = useState<'idle' | 'ringing' | 'in-call'>('idle');
@@ -601,22 +608,42 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen bg-neutral-950 text-neutral-100 font-sans overflow-hidden">
       
+      {/* MOBILE SIDEBAR BACKDROP */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* SIDEBAR NAVIGATION */}
-      <aside className="w-64 bg-neutral-900 border-r border-neutral-800 flex flex-col justify-between">
+      <aside
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 max-w-[80vw] bg-neutral-900 border-r border-neutral-800 flex flex-col justify-between transform transition-transform duration-200 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
+      >
         <div>
           <div className="p-6 border-b border-neutral-800 flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-lg text-white shadow-md shadow-indigo-600/30">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-lg text-white shadow-md shadow-indigo-600/30 shrink-0">
               C
             </div>
-            <div>
-              <h1 className="font-bold text-base tracking-wide">THE CLEANER 9,000</h1>
+            <div className="min-w-0">
+              <h1 className="font-bold text-base tracking-wide truncate">THE CLEANER 9,000</h1>
               <p className="text-xs text-neutral-400 font-medium">AUTOMATOR v2.0</p>
             </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden ml-auto p-2 -mr-2 text-neutral-400 hover:text-white"
+              aria-label="Close menu"
+            >
+              <X size={20} />
+            </button>
           </div>
           
           <nav className="p-4 space-y-1.5">
             <button 
-              onClick={() => setActiveTab('home')}
+              onClick={() => navTo('home')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === 'home' 
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
@@ -628,7 +655,7 @@ export default function Dashboard() {
             </button>
 
             <button 
-              onClick={() => setActiveTab('radar')}
+              onClick={() => navTo('radar')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === 'radar' 
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
@@ -640,7 +667,7 @@ export default function Dashboard() {
             </button>
 
             <button 
-              onClick={() => setActiveTab('gbp')}
+              onClick={() => navTo('gbp')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === 'gbp' 
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
@@ -652,7 +679,7 @@ export default function Dashboard() {
             </button>
 
             <button 
-              onClick={() => setActiveTab('job-radar')}
+              onClick={() => navTo('job-radar')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === 'job-radar' 
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
@@ -664,7 +691,7 @@ export default function Dashboard() {
             </button>
 
             <button 
-              onClick={() => setActiveTab('mission')}
+              onClick={() => navTo('mission')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === 'mission' 
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
@@ -676,7 +703,7 @@ export default function Dashboard() {
             </button>
 
             <button 
-              onClick={() => setActiveTab('reviews')}
+              onClick={() => navTo('reviews')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === 'reviews' 
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
@@ -688,7 +715,7 @@ export default function Dashboard() {
             </button>
 
             <button 
-              onClick={() => setActiveTab('guide')}
+              onClick={() => navTo('guide')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === 'guide' 
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
@@ -714,24 +741,33 @@ export default function Dashboard() {
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col overflow-y-auto">
-        <header className="h-16 border-b border-neutral-800 bg-neutral-900/40 backdrop-blur-md flex items-center justify-between px-8">
-          <h2 className="text-lg font-semibold tracking-tight capitalize">
-            {activeTab === 'home' && "Operational Overview"}
-            {activeTab === 'radar' && "Competitor Radar"}
-            {activeTab === 'gbp' && "Google Business Profile Sync"}
-            {activeTab === 'job-radar' && "Classifieds Job Radar"}
-            {activeTab === 'reviews' && "Live Cleaner Dispatch Board"}
-            {activeTab === 'mission' && "Mission Control (Call Console)"}
-            {activeTab === 'guide' && "How-To Guide & Operational Flow"}
-          </h2>
-          <div className="flex items-center space-x-4">
+        <header className="h-16 border-b border-neutral-800 bg-neutral-900/40 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 -ml-2 text-neutral-300 hover:text-white shrink-0"
+              aria-label="Open menu"
+            >
+              <Menu size={22} />
+            </button>
+            <h2 className="text-base sm:text-lg font-semibold tracking-tight capitalize truncate">
+              {activeTab === 'home' && "Operational Overview"}
+              {activeTab === 'radar' && "Competitor Radar"}
+              {activeTab === 'gbp' && "Google Business Profile Sync"}
+              {activeTab === 'job-radar' && "Classifieds Job Radar"}
+              {activeTab === 'reviews' && "Live Cleaner Dispatch Board"}
+              {activeTab === 'mission' && "Mission Control (Call Console)"}
+              {activeTab === 'guide' && "How-To Guide & Operational Flow"}
+            </h2>
+          </div>
+          <div className="flex items-center space-x-4 shrink-0">
             <span className="text-xs px-2.5 py-1 bg-neutral-800 rounded-full text-neutral-300 font-medium border border-neutral-700">
               GTA Region
             </span>
           </div>
         </header>
 
-        <div className="p-8 max-w-6xl w-full mx-auto space-y-8">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto space-y-6 sm:space-y-8">
           
           {/* ==================== TAB: HOME ==================== */}
           {activeTab === 'home' && (
@@ -799,7 +835,7 @@ export default function Dashboard() {
                       </button>
                     </div>
                   ) : (
-                    <table className="w-full text-left text-sm border-collapse">
+                    <table className="w-full min-w-[560px] text-left text-sm border-collapse">
                       <thead>
                         <tr className="bg-neutral-950/40 text-neutral-400 border-b border-neutral-800 text-xs uppercase font-semibold">
                           <th className="px-6 py-4">City</th>
@@ -962,7 +998,7 @@ export default function Dashboard() {
                     </div>
 
                     <div className="overflow-x-auto flex-1">
-                      <table className="w-full text-left text-sm border-collapse">
+                      <table className="w-full min-w-[560px] text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-neutral-950/40 text-neutral-400 border-b border-neutral-800 text-xs uppercase font-semibold">
                             <th className="px-6 py-4 text-center">Rank</th>
@@ -1238,7 +1274,7 @@ export default function Dashboard() {
                               </div>
                             </div>
 
-                            <div className="flex items-center space-x-3 self-start md:self-auto">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 self-start md:self-auto">
                               <span className={`text-sm font-bold px-3 py-1.5 rounded-lg border ${
                                 job.pay
                                   ? 'text-emerald-400 bg-emerald-500/5 border-emerald-500/10'
