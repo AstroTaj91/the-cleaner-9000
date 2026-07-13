@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     if (apiKey && apiKey !== 'your_openai_api_key') {
       try {
         const promptText = `
-You are the lead bidding strategist for Deep Cleaners (a premium cleaning brand operating in the Greater Toronto Area).
+You are the lead bidding strategist for NewGenServices (a premium cleaning brand operating in the Greater Toronto Area).
 Analyze this scraped job listing:
 - Title: "${title}"
 - Source: "${source}"
@@ -44,17 +44,17 @@ Analyze this scraped job listing:
 - Category: "${service_type}"
 - Description: "${description}"
 
-Apply the Deep Cleaners Wholesale Arbitrage rules:
-- Deep Cleaners Standard Wholesale/Retail rates are:
+Apply the NewGenServices Wholesale Arbitrage rules:
+- NewGenServices Standard Wholesale/Retail rates are:
   * 1 Bed/1 Bath = $85 wholesale (vs $140 retail)
   * 2 Bed/1 Bath = $115 wholesale (vs $190 retail)
   * 3 Bed/2 Bath = $155 wholesale (vs $250 retail)
   * 4 Bed/2 Bath = $195 wholesale (vs $310 retail)
   * Deep Clean add-on = +$35 wholesale (vs +$70 retail)
-- If the stated pay is a custom amount, recommend a wholesale contractor payout that targets roughly 60% of the stated budget (a 40% margin for us) or matches the closest Deep Cleaners size tier.
+- If the stated pay is a custom amount, recommend a wholesale contractor payout that targets roughly 60% of the stated budget (a 40% margin for us) or matches the closest NewGenServices size tier.
 
 Generate:
-1. A brief, professional, highly persuasive response draft (proposal) that the operator can copy and paste to message the client. Address specific details in the description (e.g. drywall dust, appliance cleaning, medical grade sanitization, WSIB insurance, safety shoes). Sign off as "Taj, Dispatch Manager at Deep Cleaners". Keep it under 800 characters.
+1. A brief, professional, highly persuasive response draft (proposal) that the operator can copy and paste to message the client. Address specific details in the description (e.g. drywall dust, appliance cleaning, medical grade sanitization, WSIB insurance, safety shoes). Sign off as "Chris, Dispatch Manager at NewGenServices". Keep it under 800 characters.
 2. A recommended wholesale contractor payout (in CAD dollars, as a number).
 3. A brief margin analysis explaining the pricing logic.
 4. A list of 3-4 strategic bid tips/questions for the operator.
@@ -99,12 +99,12 @@ Return ONLY a valid JSON object matching the following structure (no markdown fo
       const cleanLocation = location || 'the GTA';
       const cleanType = service_type || 'residential';
       
-      let proposalText = `Hi there! I saw your posting for the cleaning contract in ${cleanLocation}. Our professional team at Deep Cleaners is fully insured, background-checked, and specializes in high-quality ${cleanType} cleaning. We have experienced crews in your area who can bring all necessary supplies and handle this right away. We would love to discuss the details and provide a firm quote. Looking forward to connecting!\n\nBest regards,\nTaj, Dispatch Manager at Deep Cleaners`;
+      let proposalText = `Hi there! I saw your posting for the cleaning contract in ${cleanLocation}. Our professional team at NewGenServices is fully insured, background-checked, and specializes in high-quality ${cleanType} cleaning. We have experienced crews in your area who can bring all necessary supplies and handle this right away. We would love to discuss the details and provide a firm quote. Looking forward to connecting!\n\nBest regards,\nChris, Dispatch Manager at NewGenServices`;
       
       if (cleanType === 'construction') {
-        proposalText = `Hi! I saw your post-construction clean request in ${cleanLocation}. Our crew at Deep Cleaners specializes in final handover detailing—removing fine drywall dust, paint splatters, and polishing fixtures. Our team has full WSIB coverage and PPE. We can start immediately to ensure your handover goes smoothly.\n\nBest regards,\nTaj, Dispatch Manager at Deep Cleaners`;
+        proposalText = `Hi! I saw your post-construction clean request in ${cleanLocation}. Our crew at NewGenServices specializes in final handover detailing—removing fine drywall dust, paint splatters, and polishing fixtures. Our team has full WSIB coverage and PPE. We can start immediately to ensure your handover goes smoothly.\n\nBest regards,\nChris, Dispatch Manager at NewGenServices`;
       } else if (cleanType === 'commercial') {
-        proposalText = `Hello! Regarding the commercial cleaning gig in ${cleanLocation}, Deep Cleaners offers reliable office and building maintenance. Our staff is fully bonded, trained in disinfection protocols, and we provide detailed schedules. We'd love to inspect the site and finalize a contract.\n\nBest regards,\nTaj, Dispatch Manager at Deep Cleaners`;
+        proposalText = `Hello! Regarding the commercial cleaning gig in ${cleanLocation}, NewGenServices offers reliable office and building maintenance. Our staff is fully bonded, trained in disinfection protocols, and we provide detailed schedules. We'd love to inspect the site and finalize a contract.\n\nBest regards,\nChris, Dispatch Manager at NewGenServices`;
       }
 
       resultJson = {
